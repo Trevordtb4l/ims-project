@@ -10,12 +10,10 @@ const TABS = [
   { label: 'Staff', value: 'supervisor' },
 ]
 
-const REDIRECTS = {
-  student: '/student/dashboard',
-  company: '/company/dashboard',
-  supervisor: '/supervisor/dashboard',
-  coordinator: '/coordinator/dashboard',
-  admin: '/admin/dashboard',
+const roleMap = {
+  Student: 'student',
+  Company: 'company',
+  Staff: 'supervisor',
 }
 
 export default function LoginPage() {
@@ -29,21 +27,66 @@ export default function LoginPage() {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
-  const handleSubmit = async (e) => {
-    e.preventDefault()
+  const selectedRole = TABS.find((t) => t.value === activeRole)?.label ?? activeRole
+
+  const handleSubmit = async () => {
     setError('')
     setLoading(true)
+
+    const roleToSend = roleMap[selectedRole] || String(activeRole).toLowerCase()
+
+    console.log('=== LOGIN ATTEMPT ===')
+    console.log('Email:', email)
+    console.log('Role tab selected:', selectedRole)
+    console.log('Role being sent:', roleToSend)
+
     try {
-      const res = await api.post('/auth/login/', { username: email, password, role: activeRole })
-      const data = res.data
-      const tokens = data.tokens || { access: data.access, refresh: data.refresh }
-      const user = data.user
-      login(tokens, user)
-      navigate(REDIRECTS[user?.role] || '/')
+      /** JWT expects `username`; backend resolves email-in-username to real username */
+      const response = await api.post('/auth/login/', {
+        username: email.trim(),
+        password,
+        role: roleToSend,
+      })
+
+      console.log('=== LOGIN SUCCESS ===')
+      console.log('Response data:', response.data)
+
+      const token = response.data.access || response.data.token
+      const refresh = response.data.refresh
+      const user = response.data.user || response.data
+      const userRole = user?.role || roleToSend
+
+      console.log('Token:', token)
+      console.log('User role:', userRole)
+
+      if (!token || !user) {
+        setError('Invalid login response from server.')
+        return
+      }
+
+      login({ access: token, refresh: refresh ?? '' }, user)
+
+      if (userRole === 'student') navigate('/student/dashboard')
+      else if (userRole === 'supervisor') navigate('/supervisor/dashboard')
+      else if (userRole === 'company') navigate('/company/dashboard')
+      else if (userRole === 'coordinator') navigate('/coordinator/dashboard')
+      else if (userRole === 'admin') navigate('/admin/dashboard')
+      else navigate('/student/dashboard')
     } catch (err) {
-      console.error('[Login] Error:', err?.response?.data || err.message)
-      const data = err?.response?.data
-      setError(data?.detail || data?.message || (typeof data === 'string' ? data : 'Login failed. Please check your credentials.'))
+      console.log('=== LOGIN ERROR ===')
+      console.log('Status:', err.response?.status)
+      console.log('Error data:', err.response?.data)
+
+      const errData = err.response?.data
+      if (errData?.detail) {
+        setError(typeof errData.detail === 'string' ? errData.detail : JSON.stringify(errData.detail))
+      } else if (errData?.non_field_errors) {
+        setError(errData.non_field_errors[0])
+      } else if (errData) {
+        setError(JSON.stringify(errData))
+      } else {
+        setError('Login failed. Please check your credentials.')
+      }
     } finally {
       setLoading(false)
     }
@@ -101,7 +144,12 @@ export default function LoginPage() {
         </div>
 
         {/* Form */}
-        <form onSubmit={handleSubmit}>
+        <form
+          onSubmit={(e) => {
+            e.preventDefault()
+            void handleSubmit()
+          }}
+        >
           {/* Email */}
           <div style={{ marginBottom: 16 }}>
             <label style={{ display: 'block', color: '#fff', fontSize: 14, fontWeight: 500, marginBottom: 8 }}>
@@ -174,7 +222,8 @@ export default function LoginPage() {
 
           {/* Submit */}
           <button
-            type="submit"
+            type="button"
+            onClick={() => void handleSubmit()}
             disabled={loading}
             style={{
               width: '100%', padding: '14px 0', borderRadius: 12, border: 'none',
