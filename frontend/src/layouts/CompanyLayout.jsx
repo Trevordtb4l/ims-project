@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { NavLink, Outlet, useLocation } from 'react-router-dom'
+import { NavLink, Outlet } from 'react-router-dom'
 import { useAuth } from '@/context/AuthContext'
 import api from '@/api/axios'
 import {
@@ -8,134 +8,251 @@ import {
   Users,
   MessageSquare,
   Settings,
-  Bell,
   LogOut,
+  LayoutGrid,
 } from 'lucide-react'
 
-const navItems = [
-  { to: '/company/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { to: '/company/internships', label: 'Internships', icon: Briefcase },
-  { to: '/company/applicants', label: 'Applicants', icon: Users },
-  { to: '/company/messages', label: 'Messages', icon: MessageSquare },
-  { to: '/company/settings', label: 'Settings', icon: Settings },
+const SIDEBAR_W = 240
+
+const NAV = [
+  { label: 'Dashboard', icon: LayoutDashboard, path: '/company/dashboard' },
+  { label: 'Internships', icon: Briefcase, path: '/company/internships' },
+  { label: 'Applicants', icon: Users, path: '/company/applicants', badge: true },
+  { label: 'Messages', icon: MessageSquare, path: '/company/messages' },
+  { label: 'Settings', icon: Settings, path: '/company/settings' },
 ]
 
-function getInitials(user) {
-  if (!user) return '?'
-  if (user.company_name || user.companyName) {
-    const name = user.company_name || user.companyName
-    return name.charAt(0).toUpperCase()
-  }
-  const first = user.first_name || user.firstName || ''
-  const last = user.last_name || user.lastName || ''
-  if (first || last) return `${first.charAt(0)}${last.charAt(0)}`.toUpperCase()
-  return (user.username || user.email || '?').charAt(0).toUpperCase()
+function extractCount(data) {
+  if (data == null) return 0
+  if (typeof data.count === 'number') return data.count
+  if (Array.isArray(data)) return data.length
+  if (Array.isArray(data.results)) return data.results.length
+  return 0
 }
 
 export default function CompanyLayout() {
   const { user, logout } = useAuth()
-  const location = useLocation()
-  const [slots, setSlots] = useState({ total: 0, filled: 0 })
+  const [applicantCount, setApplicantCount] = useState(0)
+  const [slots, setSlots] = useState({ remaining: 3, total: 10 })
 
-  const companyName = user?.company_name || user?.companyName || user?.username || 'Company'
-  const initials = getInitials(user)
+  const companyName = user?.company_name || user?.companyName || 'Company'
 
   useEffect(() => {
-    async function fetchSlots() {
+    let cancelled = false
+    async function load() {
       try {
-        const { data } = await api.get('internships/')
-        const internships = Array.isArray(data) ? data : data.results || []
-        const total = internships.reduce((sum, i) => sum + (i.total_slots || i.slots || 0), 0)
-        const filled = internships.reduce((sum, i) => sum + (i.filled_slots || i.filled || 0), 0)
-        setSlots({ total, filled })
+        const { data } = await api.get('/internship-applications/?company=me')
+        if (!cancelled) setApplicantCount(extractCount(data))
       } catch {
-        /* silently fail */
+        if (!cancelled) setApplicantCount(0)
+      }
+      try {
+        const { data } = await api.get('/internships/?company=me')
+        const list = Array.isArray(data) ? data : data?.results || []
+        let total = 0
+        let filled = 0
+        list.forEach((i) => {
+          const t = i.total_slots ?? i.slots_total ?? i.max_interns ?? 10
+          const f = i.filled_slots ?? i.filled ?? 0
+          total += t || 10
+          filled += f
+        })
+        if (!cancelled && total > 0) {
+          setSlots({ total, remaining: Math.max(0, total - filled) })
+        }
+      } catch {
+        /* keep defaults */
       }
     }
-    fetchSlots()
+    load()
+    return () => {
+      cancelled = true
+    }
   }, [])
 
-  const remaining = Math.max(0, slots.total - slots.filled)
-  const progressPct = slots.total > 0 ? (remaining / slots.total) * 100 : 0
+  const slotsPercent =
+    slots.total > 0 ? Math.min(100, (slots.remaining / slots.total) * 100) : 30
 
   return (
-    <div className="flex h-screen" style={{ backgroundColor: '#0f0f0f', color: '#ffffff' }}>
-      {/* Sidebar */}
+    <div className="min-h-screen" style={{ backgroundColor: '#0f0f0f', color: '#ffffff' }}>
       <aside
-        className="fixed top-0 left-0 h-full w-64 flex flex-col z-30"
-        style={{ backgroundColor: '#1a1a1a', borderRight: '1px solid #2a2a2a' }}
+        style={{
+          width: `${SIDEBAR_W}px`,
+          minWidth: `${SIDEBAR_W}px`,
+          backgroundColor: '#111111',
+          borderRight: '1px solid #2a2a2a',
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          height: '100vh',
+          display: 'flex',
+          flexDirection: 'column',
+          zIndex: 40,
+        }}
       >
-        {/* Brand */}
-        <div className="px-6 pt-6 pb-4">
-          <div className="flex items-center gap-3">
+        {/* Company header */}
+        <div style={{ padding: '24px 20px', borderBottom: '1px solid #2a2a2a' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             <div
-              className="w-9 h-9 rounded-lg flex items-center justify-center text-sm font-bold shrink-0"
-              style={{ backgroundColor: '#CFFF00', color: '#000000' }}
+              style={{
+                width: '40px',
+                height: '40px',
+                backgroundColor: '#CFFF00',
+                borderRadius: '10px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0,
+              }}
             >
-              {initials}
+              <LayoutGrid size={20} style={{ color: '#000000' }} />
             </div>
             <div className="min-w-0">
-              <p className="text-sm font-semibold truncate">{companyName}</p>
-              <p className="text-xs" style={{ color: '#888888' }}>
-                Enterprise Account
+              <p
+                className="truncate"
+                style={{ fontSize: '0.875rem', fontWeight: '700', color: '#ffffff', whiteSpace: 'nowrap' }}
+              >
+                {companyName}
               </p>
+              <p style={{ fontSize: '0.75rem', color: '#888888' }}>Enterprise Account</p>
             </div>
           </div>
         </div>
 
-        {/* Navigation */}
-        <nav className="flex-1 px-3 space-y-1 overflow-y-auto">
-          {navItems.map(({ to, label, icon: Icon }) => (
-            <NavLink
-              key={to}
-              to={to}
-              className={({ isActive }) =>
-                `flex items-center gap-3 px-4 py-2.5 text-sm font-medium rounded-xl transition-colors ${
-                  isActive ? '' : 'hover:bg-white/5'
-                }`
-              }
-              style={({ isActive }) =>
-                isActive
-                  ? { backgroundColor: 'rgba(255,255,255,0.1)', color: '#ffffff' }
-                  : { color: '#888888' }
-              }
-            >
-              <Icon size={18} />
-              {label}
+        {/* Nav — icon + label on every item */}
+        <nav
+          style={{
+            flex: 1,
+            minHeight: 0,
+            padding: '16px 12px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '4px',
+            overflowY: 'auto',
+            overflowX: 'hidden',
+          }}
+        >
+          {NAV.map((item) => (
+            <NavLink key={item.path} to={item.path} className="block" style={{ textDecoration: 'none' }}>
+              {({ isActive }) => (
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '12px',
+                    padding: '10px 16px',
+                    borderRadius: '10px',
+                    backgroundColor: isActive ? '#CFFF00' : 'transparent',
+                    color: isActive ? '#000000' : '#888888',
+                    fontWeight: isActive ? '600' : '500',
+                    fontSize: '0.875rem',
+                    transition: 'all 0.2s',
+                    width: '100%',
+                    boxSizing: 'border-box',
+                  }}
+                >
+                  <item.icon size={18} style={{ flexShrink: 0 }} strokeWidth={2} />
+                  <span style={{ flex: 1, minWidth: 0, textAlign: 'left' }}>{item.label}</span>
+                  {item.badge && applicantCount > 0 && (
+                    <span
+                      style={{
+                        flexShrink: 0,
+                        fontSize: '0.7rem',
+                        fontWeight: '700',
+                        padding: '2px 8px',
+                        borderRadius: '999px',
+                        backgroundColor: isActive ? '#000000' : '#CFFF00',
+                        color: isActive ? '#CFFF00' : '#000000',
+                      }}
+                    >
+                      {applicantCount > 99 ? '99+' : applicantCount}
+                    </span>
+                  )}
+                </div>
+              )}
             </NavLink>
           ))}
         </nav>
 
-        {/* Quick Stats */}
-        <div className="px-4 pb-2" style={{ borderTop: '1px solid #2a2a2a' }}>
-          <p
-            className="text-[10px] font-semibold tracking-widest mt-4 mb-3"
-            style={{ color: '#888888' }}
+        {/* Bottom — Quick Stats + Log Out */}
+        <div style={{ padding: '16px 12px', borderTop: '1px solid #2a2a2a' }}>
+          <div
+            style={{
+              backgroundColor: '#1a1a1a',
+              border: '1px solid #2a2a2a',
+              borderRadius: '12px',
+              padding: '16px',
+              marginBottom: '12px',
+            }}
           >
-            QUICK STATS
-          </p>
-          <div className="mb-4">
-            <div className="flex items-center justify-between text-xs mb-1.5">
-              <span style={{ color: '#888888' }}>Remaining Slots</span>
-              <span className="font-medium" style={{ color: '#CFFF00' }}>
-                {remaining}/{slots.total}
-              </span>
+            <p
+              style={{
+                fontSize: '0.7rem',
+                fontWeight: '700',
+                color: '#888888',
+                letterSpacing: '0.1em',
+                textTransform: 'uppercase',
+                marginBottom: '10px',
+                marginTop: 0,
+              }}
+            >
+              QUICK STATS
+            </p>
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                marginBottom: '8px',
+              }}
+            >
+              <p style={{ fontSize: '0.813rem', color: '#ffffff', margin: 0 }}>Remaining slots</p>
+              <p style={{ fontSize: '0.813rem', fontWeight: '700', color: '#CFFF00', margin: 0 }}>
+                {slots.remaining}/{slots.total}
+              </p>
             </div>
-            <div className="w-full h-1.5 rounded-full" style={{ backgroundColor: '#2a2a2a' }}>
+            <div
+              style={{
+                width: '100%',
+                height: '4px',
+                backgroundColor: '#2a2a2a',
+                borderRadius: '999px',
+              }}
+            >
               <div
-                className="h-full rounded-full transition-all duration-500"
-                style={{ backgroundColor: '#CFFF00', width: `${progressPct}%` }}
+                style={{
+                  height: '4px',
+                  backgroundColor: '#CFFF00',
+                  borderRadius: '999px',
+                  width: `${slotsPercent}%`,
+                }}
               />
             </div>
           </div>
-        </div>
 
-        {/* Log Out */}
-        <div className="px-4 pb-4">
           <button
+            type="button"
             onClick={logout}
-            className="flex items-center gap-2 w-full px-3 py-2 text-sm rounded-xl transition-colors hover:bg-white/5"
-            style={{ color: '#888888' }}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '10px',
+              width: '100%',
+              padding: '10px 16px',
+              borderRadius: '10px',
+              backgroundColor: 'transparent',
+              border: 'none',
+              color: '#888888',
+              fontSize: '0.875rem',
+              cursor: 'pointer',
+              transition: 'background-color 0.2s',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = '#1a1a1a'
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = 'transparent'
+            }}
           >
             <LogOut size={16} />
             Log Out
@@ -143,23 +260,18 @@ export default function CompanyLayout() {
         </div>
       </aside>
 
-      {/* Main content */}
-      <div className="flex-1 ml-64 flex flex-col min-h-screen">
-        {/* Top bar */}
-        <header
-          className="sticky top-0 z-20 flex items-center justify-end px-8 py-4"
-          style={{ backgroundColor: '#0f0f0f', borderBottom: '1px solid #2a2a2a' }}
-        >
-          <button className="relative p-2 rounded-xl hover:bg-white/5 transition-colors">
-            <Bell size={18} style={{ color: '#888888' }} />
-          </button>
-        </header>
-
-        {/* Page content */}
-        <main className="flex-1 overflow-y-auto p-8">
+      <main
+        className="min-w-0"
+        style={{
+          marginLeft: `${SIDEBAR_W}px`,
+          minHeight: '100vh',
+          backgroundColor: '#0f0f0f',
+        }}
+      >
+        <div style={{ padding: '32px' }}>
           <Outlet />
-        </main>
-      </div>
+        </div>
+      </main>
     </div>
   )
 }

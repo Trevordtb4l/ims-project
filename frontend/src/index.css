@@ -1,14 +1,12 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
 
-:root {
-  --ims-black: #0f0f0f;
-  --ims-card: #1a1a1a;
-  --ims-accent: #CFFF00;
-  --ims-muted: #888888;
-  --ims-border: #2a2a2a;
-  --ims-olive: #4a5a00;
+@theme {
+  --color-ims-black: #0f0f0f;
+  --color-ims-card: #1a1a1a;
+  --color-ims-accent: #CFFF00;
+  --color-ims-muted: #888888;
+  --color-ims-border: #2a2a2a;
+  --color-ims-olive: #4a5a00;
 }
 
 * {
@@ -26,4 +24,22 @@ body {
 
 #root {
   min-height: 100vh;
+}
+
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active,
+select:-webkit-autofill,
+select:-webkit-autofill:hover,
+select:-webkit-autofill:focus {
+  -webkit-box-shadow: 0 0 0px 1000px #2a2a2a inset !important;
+  -webkit-text-fill-color: #ffffff !important;
+  caret-color: #ffffff !important;
+  transition: background-color 5000s ease-in-out 0s;
+}
+
+select option {
+  background-color: #2a2a2a;
+  color: #ffffff;
 }

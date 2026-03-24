@@ -34,126 +34,173 @@ export default function LoginPage() {
     setError('')
     setLoading(true)
     try {
-      console.log('[Login] Payload:', { username: email, password, role: activeRole })
       const res = await api.post('/auth/login/', { username: email, password, role: activeRole })
-      const { tokens, user } = res.data
+      const data = res.data
+      const tokens = data.tokens || { access: data.access, refresh: data.refresh }
+      const user = data.user
       login(tokens, user)
-      const dest = REDIRECTS[user.role] || '/'
-      console.log('[Login] Redirect →', dest)
-      navigate(dest)
+      navigate(REDIRECTS[user?.role] || '/')
     } catch (err) {
+      console.error('[Login] Error:', err?.response?.data || err.message)
       const data = err?.response?.data
-      const msg = data?.detail || data?.message || (typeof data === 'string' ? data : 'Login failed. Please check your credentials.')
-      setError(msg)
+      setError(data?.detail || data?.message || (typeof data === 'string' ? data : 'Login failed. Please check your credentials.'))
     } finally {
       setLoading(false)
     }
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center px-4" style={{ background: '#0f0f0f' }}>
-      <div className="w-full max-w-md rounded-3xl border p-8" style={{ background: '#1a1a1a', borderColor: '#2a2a2a' }}>
+    <div style={{
+      minHeight: '100vh', display: 'flex', flexDirection: 'column',
+      alignItems: 'center', justifyContent: 'center', padding: '16px',
+      backgroundColor: '#0f0f0f',
+      background: 'radial-gradient(ellipse at top left, #1a2a00 0%, #0f0f0f 60%)',
+    }}>
+      {/* Card */}
+      <div style={{
+        width: '100%', maxWidth: 420, borderRadius: 24, padding: 32,
+        backgroundColor: '#1a1a1a', border: '1px solid #2a2a2a',
+      }}>
         {/* Icon */}
-        <div className="mb-5 flex justify-center">
-          <div className="flex h-14 w-14 items-center justify-center rounded-full" style={{ background: '#4a5a00' }}>
-            <GraduationCap className="h-7 w-7" style={{ color: '#CFFF00' }} />
+        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 24 }}>
+          <div style={{
+            width: 64, height: 64, borderRadius: '50%',
+            backgroundColor: '#4a5a00', display: 'flex',
+            alignItems: 'center', justifyContent: 'center',
+          }}>
+            <GraduationCap size={32} style={{ color: '#CFFF00' }} />
           </div>
         </div>
 
-        <h1 className="text-center text-2xl font-bold text-white">Welcome Back</h1>
-        <p className="mt-1 text-center text-sm" style={{ color: '#888888' }}>
+        {/* Heading */}
+        <h1 style={{ color: '#fff', fontSize: 28, fontWeight: 700, textAlign: 'center', margin: 0 }}>
+          Welcome Back
+        </h1>
+        <p style={{ color: '#888', fontSize: 14, textAlign: 'center', margin: '8px 0 32px' }}>
           Sign in to the Internship Management System
         </p>
 
         {/* Role Tabs */}
-        <div className="mt-6 rounded-xl p-1" style={{ background: '#2a2a2a' }}>
-          <div className="flex">
-            {TABS.map((tab) => (
-              <button
-                key={tab.value}
-                type="button"
-                onClick={() => setActiveRole(tab.value)}
-                className="flex-1 rounded-lg py-2.5 text-sm font-semibold transition-colors"
-                style={{
-                  background: activeRole === tab.value ? '#CFFF00' : 'transparent',
-                  color: activeRole === tab.value ? '#000' : '#888888',
-                }}
-              >
-                {tab.label}
-              </button>
-            ))}
-          </div>
+        <div style={{ backgroundColor: '#2a2a2a', borderRadius: 12, padding: 4, display: 'flex', marginBottom: 24 }}>
+          {TABS.map((tab) => (
+            <button
+              key={tab.value}
+              type="button"
+              onClick={() => setActiveRole(tab.value)}
+              style={{
+                flex: 1, padding: '10px 0', borderRadius: 8, border: 'none',
+                fontSize: 14, fontWeight: 600, cursor: 'pointer',
+                transition: 'all 0.2s',
+                backgroundColor: activeRole === tab.value ? '#CFFF00' : 'transparent',
+                color: activeRole === tab.value ? '#000' : '#888',
+              }}
+            >
+              {tab.label}
+            </button>
+          ))}
         </div>
 
         {/* Form */}
-        <form onSubmit={handleSubmit} className="mt-6 space-y-4">
+        <form onSubmit={handleSubmit}>
           {/* Email */}
-          <div>
-            <label className="mb-1.5 block text-sm font-medium" style={{ color: '#888888' }}>
+          <div style={{ marginBottom: 16 }}>
+            <label style={{ display: 'block', color: '#fff', fontSize: 14, fontWeight: 500, marginBottom: 8 }}>
               Institutional Email
             </label>
-            <div className="relative">
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: 8,
+              backgroundColor: '#2a2a2a', border: '1px solid #3a3a3a',
+              borderRadius: 12, padding: '12px 16px',
+            }}>
               <input
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                placeholder="you@example.com"
-                className="w-full rounded-xl border border-transparent px-4 py-3 pr-11 text-white placeholder-[#555] outline-none transition-colors focus:border-[#CFFF00]"
-                style={{ background: '#2a2a2a' }}
+                placeholder="student@university.edu"
+                style={{
+                  flex: 1, backgroundColor: 'transparent', border: 'none', outline: 'none',
+                  color: '#fff', fontSize: 14, fontFamily: 'inherit',
+                }}
               />
-              <Mail className="pointer-events-none absolute right-3.5 top-1/2 h-4 w-4 -translate-y-1/2" style={{ color: '#888888' }} />
+              <Mail size={16} style={{ color: '#888', flexShrink: 0 }} />
             </div>
           </div>
 
           {/* Password */}
-          <div>
-            <div className="mb-1.5 flex items-center justify-between">
-              <label className="text-sm font-medium" style={{ color: '#888888' }}>Password</label>
-              <button type="button" className="text-xs font-medium" style={{ color: '#CFFF00' }}>
-                Forgot password?
-              </button>
+          <div style={{ marginBottom: 24 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+              <label style={{ color: '#fff', fontSize: 14, fontWeight: 500 }}>Password</label>
+              <span style={{ color: '#CFFF00', fontSize: 13, cursor: 'pointer' }}>Forgot password?</span>
             </div>
-            <div className="relative">
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: 8,
+              backgroundColor: '#2a2a2a', border: '1px solid #3a3a3a',
+              borderRadius: 12, padding: '12px 16px',
+            }}>
               <input
                 type={showPw ? 'text' : 'password'}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
-                placeholder="••••••••"
-                className="w-full rounded-xl border border-transparent px-4 py-3 pr-11 text-white placeholder-[#555] outline-none transition-colors focus:border-[#CFFF00]"
-                style={{ background: '#2a2a2a' }}
+                placeholder="Enter your password"
+                style={{
+                  flex: 1, backgroundColor: 'transparent', border: 'none', outline: 'none',
+                  color: '#fff', fontSize: 14, fontFamily: 'inherit',
+                }}
               />
               <button
                 type="button"
                 onClick={() => setShowPw((v) => !v)}
-                className="absolute right-3.5 top-1/2 -translate-y-1/2"
-                style={{ color: '#888888' }}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex' }}
               >
-                {showPw ? <EyeOff className="h-4.5 w-4.5" /> : <Eye className="h-4.5 w-4.5" />}
+                {showPw
+                  ? <EyeOff size={16} style={{ color: '#888' }} />
+                  : <Eye size={16} style={{ color: '#888' }} />}
               </button>
             </div>
           </div>
 
           {/* Error */}
-          {error && <p className="rounded-lg px-3 py-2 text-center text-sm text-red-400" style={{ background: '#450a0a' }}>{error}</p>}
+          {error && (
+            <p style={{
+              color: '#f87171', fontSize: 14, textAlign: 'center',
+              backgroundColor: '#450a0a', borderRadius: 8, padding: '8px 12px',
+              marginBottom: 16,
+            }}>
+              {error}
+            </p>
+          )}
 
           {/* Submit */}
           <button
             type="submit"
             disabled={loading}
-            className="w-full rounded-xl py-3 text-sm font-bold transition-all hover:brightness-90 disabled:opacity-50"
-            style={{ background: '#CFFF00', color: '#000' }}
+            style={{
+              width: '100%', padding: '14px 0', borderRadius: 12, border: 'none',
+              backgroundColor: '#CFFF00', color: '#000', fontWeight: 700,
+              fontSize: 16, cursor: loading ? 'not-allowed' : 'pointer',
+              opacity: loading ? 0.5 : 1, transition: 'opacity 0.2s',
+              fontFamily: 'inherit',
+            }}
+            onMouseEnter={(e) => { if (!loading) e.currentTarget.style.opacity = '0.9' }}
+            onMouseLeave={(e) => { if (!loading) e.currentTarget.style.opacity = '1' }}
           >
-            {loading ? 'Signing in...' : 'Sign In'}
+            {loading ? 'Signing in...' : 'Sign In  →'}
           </button>
         </form>
 
-        <p className="mt-6 text-center text-sm" style={{ color: '#888888' }}>
+        {/* Footer text */}
+        <p style={{ color: '#888', fontSize: 14, textAlign: 'center', marginTop: 24 }}>
           Don&apos;t have an account?{' '}
-          <Link to="/register" className="font-medium" style={{ color: '#CFFF00' }}>Contact Admin</Link>
+          <span style={{ color: '#fff', fontWeight: 700, cursor: 'pointer' }}>Contact Admin</span>
         </p>
       </div>
+
+      {/* Copyright */}
+      <p style={{ color: '#555', fontSize: 12, marginTop: 32 }}>
+        &copy; {new Date().getFullYear()} University Internship Management System. All rights reserved.
+      </p>
     </div>
   )
 }
