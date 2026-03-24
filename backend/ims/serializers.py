@@ -285,6 +285,7 @@ class InternshipApplicationSerializer(serializers.ModelSerializer):
 class LogbookSerializer(serializers.ModelSerializer):
     student_name = serializers.SerializerMethodField()
     company_name = serializers.SerializerMethodField()
+    student_id = serializers.SerializerMethodField()
 
     class Meta:
         model = Logbook
@@ -292,8 +293,13 @@ class LogbookSerializer(serializers.ModelSerializer):
             "id", "internship", "week_number", "activities",
             "file_upload", "submitted_at",
             "review_status", "reviewed_at", "supervisor_comment",
-            "student_name", "company_name",
+            "student_name", "company_name", "student_id",
         ]
+
+    def get_student_id(self, obj):
+        if obj.internship and obj.internship.student_id is not None:
+            return obj.internship.student_id
+        return None
 
     def get_student_name(self, obj):
         if obj.internship and obj.internship.student:

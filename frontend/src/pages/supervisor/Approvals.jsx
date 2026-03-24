@@ -1,397 +1,396 @@
-import { useState, useEffect, useCallback } from 'react'
-import { Check, X, Clock, FileText, MessageSquare, User } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { CheckCircle, XCircle, Clock, Eye, Search } from 'lucide-react'
 import api from '@/api/axios'
-import { useToast } from '@/components/Toast.jsx'
 
-function getInitials(name) {
-  if (!name) return '?'
-  return name
-    .split(' ')
-    .map((w) => w[0])
-    .join('')
-    .toUpperCase()
-}
+const mockPending = [
+  { id: 1, student_id: 1, student_name: 'Trevor Andeh', company_name: 'TechNova Cameroon', week_number: 4, activities: 'Worked on the backend authentication module using Django REST Framework. Implemented JWT token refresh logic and wrote unit tests for all auth endpoints.', submitted_at: '2026-03-20T10:30:00Z', review_status: 'pending', avatar: 'TA' },
+  { id: 2, student_id: 2, student_name: 'Mulema Haaris', company_name: 'DataFlow Inc', week_number: 7, activities: 'Completed the database schema migration and optimized slow queries. Reduced average query time from 2.3s to 0.4s using proper indexing strategies.', submitted_at: '2026-03-19T14:15:00Z', review_status: 'pending', avatar: 'MH' },
+  { id: 3, student_id: 4, student_name: 'Austine Mbah', company_name: 'CloudBase Ltd', week_number: 9, activities: 'Deployed the staging environment on AWS EC2 and configured auto-scaling. Set up CloudWatch monitoring and alerts for the production pipeline.', submitted_at: '2026-03-18T09:00:00Z', review_status: 'pending', avatar: 'AM' },
+]
 
-function SkeletonCard() {
-  return (
-    <div className="rounded-2xl border p-5 animate-pulse" style={{ backgroundColor: '#1a1a1a', borderColor: '#2a2a2a' }}>
-      <div className="flex items-center gap-3 mb-3">
-        <div className="w-10 h-10 rounded-full" style={{ backgroundColor: '#2a2a2a' }} />
-        <div className="flex-1 space-y-2">
-          <div className="h-4 w-32 rounded" style={{ backgroundColor: '#2a2a2a' }} />
-          <div className="h-3 w-20 rounded" style={{ backgroundColor: '#2a2a2a' }} />
-        </div>
-      </div>
-      <div className="h-3 w-full rounded mb-2" style={{ backgroundColor: '#2a2a2a' }} />
-      <div className="h-3 w-3/4 rounded mb-4" style={{ backgroundColor: '#2a2a2a' }} />
-      <div className="border-t my-3" style={{ borderColor: '#2a2a2a' }} />
-      <div className="flex gap-2">
-        <div className="h-9 w-24 rounded-xl" style={{ backgroundColor: '#2a2a2a' }} />
-        <div className="h-9 w-24 rounded-xl" style={{ backgroundColor: '#2a2a2a' }} />
-      </div>
-    </div>
-  )
+const mockReviewed = [
+  { id: 4, student_id: 3, student_name: 'Frankline Neba', company_name: 'CreativeHub', week_number: 2, activities: 'Completed UI wireframes for the main dashboard and presented to the design team.', submitted_at: '2026-03-15T11:00:00Z', review_status: 'approved', supervisor_comment: 'Excellent work on the wireframes.', reviewed_at: '2026-03-16T09:00:00Z', avatar: 'FN' },
+  { id: 5, student_id: 5, student_name: 'Epie Samuel', company_name: 'MobileSoft', week_number: 6, activities: 'Built the push notification system for iOS and Android using Firebase Cloud Messaging.', submitted_at: '2026-03-10T13:00:00Z', review_status: 'needs_revision', supervisor_comment: 'Please provide more detail on the implementation approach.', reviewed_at: '2026-03-11T10:00:00Z', avatar: 'ES' },
+]
+
+function isApproved(status) {
+  return status === 'approved'
 }
 
 export default function Approvals() {
+  const navigate = useNavigate()
   const [activeTab, setActiveTab] = useState('pending')
-  const [pendingLogbooks, setPendingLogbooks] = useState([])
-  const [reviewedLogbooks, setReviewedLogbooks] = useState([])
+  const [pendingList, setPendingList] = useState(mockPending)
+  const [reviewedList, setReviewedList] = useState(mockReviewed)
+  const [search, setSearch] = useState('')
   const [loading, setLoading] = useState(true)
-  const [commentModal, setCommentModal] = useState({ open: false, logbookId: null, action: null })
+  const [rejectingId, setRejectingId] = useState(null)
   const [comment, setComment] = useState('')
-  const [actionLoading, setActionLoading] = useState(false)
-  const { toast } = useToast()
-
-  const fetchLogbooks = useCallback(async () => {
-    setLoading(true)
-
-    try {
-      const res = await api.get('/logbooks/?review_status=pending')
-      const data = res.data
-      setPendingLogbooks(Array.isArray(data) ? data : data.results || [])
-    } catch {
-      setPendingLogbooks([])
-    }
-
-    try {
-      const res = await api.get('/logbooks/?review_status=approved')
-      const data = res.data
-      setReviewedLogbooks(Array.isArray(data) ? data : data.results || [])
-    } catch {
-      setReviewedLogbooks([])
-    }
-
-    setLoading(false)
-  }, [])
+  const [expandedId, setExpandedId] = useState(null)
 
   useEffect(() => {
-    fetchLogbooks()
-  }, [fetchLogbooks])
+    const fetchApprovals = async () => {
+      try {
+        const [r1, r2, r3] = await Promise.allSettled([
+          api.get('/logbooks/?review_status=pending'),
+          api.get('/logbooks/?review_status=approved'),
+          api.get('/logbooks/?review_status=needs_revision'),
+        ])
+        if (r1.status === 'fulfilled') {
+          const data = r1.value.data?.results || r1.value.data || []
+          if (Array.isArray(data) && data.length > 0) setPendingList(data)
+        }
+        const approved = r2.status === 'fulfilled' ? r2.value.data?.results || r2.value.data || [] : []
+        const needsRev = r3.status === 'fulfilled' ? r3.value.data?.results || r3.value.data || [] : []
+        const merged = [...(Array.isArray(approved) ? approved : []), ...(Array.isArray(needsRev) ? needsRev : [])]
+        if (merged.length > 0) {
+          merged.sort((a, b) => {
+            const ta = a.reviewed_at ? new Date(a.reviewed_at).getTime() : 0
+            const tb = b.reviewed_at ? new Date(b.reviewed_at).getTime() : 0
+            return tb - ta
+          })
+          setReviewedList(merged)
+        }
+      } catch (err) {
+        console.log('Using mock data', err)
+      } finally {
+        setLoading(false)
+      }
+    }
+    fetchApprovals()
+  }, [])
 
   const handleApprove = async (id) => {
     try {
-      setActionLoading(true)
-      await api.patch(`/logbooks/${id}/`, { review_status: 'approved', supervisor_comment: '' })
-      toast('Logbook approved')
-      fetchLogbooks()
+      await api.patch(`/logbooks/${id}/`, { review_status: 'approved', supervisor_comment: 'Approved' })
+      const item = pendingList.find((p) => p.id === id)
+      setPendingList((prev) => prev.filter((p) => p.id !== id))
+      setReviewedList((prev) => [
+        ...prev,
+        {
+          ...item,
+          review_status: 'approved',
+          reviewed_at: new Date().toISOString(),
+          supervisor_comment: 'Approved',
+        },
+      ])
     } catch (err) {
-      toast(err.response?.data?.detail || 'Failed to approve logbook', 'error')
-    } finally {
-      setActionLoading(false)
+      console.log('Approve error:', err.response?.data)
     }
   }
 
-  const handleReject = async () => {
+  const handleReject = async (id) => {
     try {
-      setActionLoading(true)
-      await api.patch(`/logbooks/${commentModal.logbookId}/`, {
+      await api.patch(`/logbooks/${id}/`, {
         review_status: 'needs_revision',
         supervisor_comment: comment,
       })
-      setCommentModal({ open: false, logbookId: null, action: null })
+      const item = pendingList.find((p) => p.id === id)
+      setPendingList((prev) => prev.filter((p) => p.id !== id))
+      setReviewedList((prev) => [
+        ...prev,
+        {
+          ...item,
+          review_status: 'needs_revision',
+          supervisor_comment: comment,
+          reviewed_at: new Date().toISOString(),
+        },
+      ])
+      setRejectingId(null)
       setComment('')
-      toast('Logbook rejected')
-      fetchLogbooks()
     } catch (err) {
-      toast(err.response?.data?.detail || 'Failed to reject logbook', 'error')
-    } finally {
-      setActionLoading(false)
+      console.log('Reject error:', err.response?.data)
     }
   }
 
-  const formatDate = (dateStr) => {
-    if (!dateStr) return '—'
-    return new Date(dateStr).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-    })
-  }
+  const currentList = activeTab === 'pending' ? pendingList : reviewedList
+  const filteredList = currentList.filter((item) => {
+    const name = item.student_name || ''
+    return name.toLowerCase().includes(search.toLowerCase())
+  })
 
   return (
-    <div className="min-h-screen p-6" style={{ backgroundColor: '#0f0f0f' }}>
-      <h1 className="text-2xl font-bold text-white mb-6">Logbook Approvals</h1>
-
-      {/* Tab bar */}
-      <div className="flex gap-2 mb-6">
-        <button
-          onClick={() => setActiveTab('pending')}
-          className="flex items-center transition-colors"
-          style={
-            activeTab === 'pending'
-              ? { backgroundColor: '#CFFF00', color: '#000', fontWeight: 700, borderRadius: 12, padding: '10px 20px' }
-              : { backgroundColor: '#1a1a1a', color: '#888888', border: '1px solid #2a2a2a', borderRadius: 12, padding: '10px 20px' }
-          }
-          onMouseEnter={(e) => {
-            if (activeTab !== 'pending') e.currentTarget.style.borderColor = '#CFFF00'
-          }}
-          onMouseLeave={(e) => {
-            if (activeTab !== 'pending') e.currentTarget.style.borderColor = '#2a2a2a'
-          }}
-        >
-          Pending
-          {pendingLogbooks.length > 0 && (
-            <span
-              className="text-xs rounded-full px-2 ml-1 font-semibold"
-              style={{ backgroundColor: '#CFFF00', color: '#000' }}
-            >
-              {pendingLogbooks.length}
-            </span>
-          )}
-        </button>
-        <button
-          onClick={() => setActiveTab('reviewed')}
-          className="transition-colors"
-          style={
-            activeTab === 'reviewed'
-              ? { backgroundColor: '#CFFF00', color: '#000', fontWeight: 700, borderRadius: 12, padding: '10px 20px' }
-              : { backgroundColor: '#1a1a1a', color: '#888888', border: '1px solid #2a2a2a', borderRadius: 12, padding: '10px 20px' }
-          }
-          onMouseEnter={(e) => {
-            if (activeTab !== 'reviewed') e.currentTarget.style.borderColor = '#CFFF00'
-          }}
-          onMouseLeave={(e) => {
-            if (activeTab !== 'reviewed') e.currentTarget.style.borderColor = '#2a2a2a'
-          }}
-        >
-          Reviewed
-        </button>
+    <div>
+      {/* Header */}
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '32px' }}>
+        <div>
+          <h1 style={{ fontSize: '2rem', fontWeight: '800', color: '#ffffff', marginBottom: '6px' }}>Approvals</h1>
+          <p style={{ fontSize: '0.875rem', color: '#888888' }}>Review and approve student logbook submissions</p>
+        </div>
+        <div style={{ display: 'flex', gap: '10px' }}>
+          <div style={{ padding: '8px 16px', backgroundColor: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: '999px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <div style={{ width: '8px', height: '8px', backgroundColor: '#ef4444', borderRadius: '50%' }} />
+            <span style={{ fontSize: '0.813rem', color: '#ffffff', fontWeight: '600' }}>{pendingList.length} Pending</span>
+          </div>
+          <div style={{ padding: '8px 16px', backgroundColor: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: '999px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <div style={{ width: '8px', height: '8px', backgroundColor: '#22c55e', borderRadius: '50%' }} />
+            <span style={{ fontSize: '0.813rem', color: '#ffffff', fontWeight: '600' }}>{reviewedList.length} Reviewed</span>
+          </div>
+        </div>
       </div>
 
-      {/* Pending tab */}
-      {activeTab === 'pending' && (
-        <>
-          {loading ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {[1, 2, 3, 4].map((i) => (
-                <SkeletonCard key={i} />
-              ))}
-            </div>
-          ) : pendingLogbooks.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-20">
-              <Clock className="mb-3" size={40} style={{ color: '#888888' }} />
-              <p style={{ color: '#888888' }} className="text-sm">No pending approvals</p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {pendingLogbooks.map((logbook) => (
-                <div
-                  key={logbook.id}
-                  className="rounded-2xl border p-5"
-                  style={{ backgroundColor: '#1a1a1a', borderColor: '#2a2a2a' }}
-                >
-                  <div className="flex items-center gap-3 mb-2">
-                    <div
-                      className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm"
-                      style={{ backgroundColor: '#CFFF00', color: '#000' }}
-                    >
-                      {getInitials(logbook.student_name)}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="text-white font-semibold text-sm">{logbook.student_name}</span>
-                        <span
-                          className="rounded-full px-2 py-0.5 text-xs"
-                          style={{ backgroundColor: '#2a2a2a', color: '#888888' }}
-                        >
-                          Logbook Week {logbook.week_number}
-                        </span>
-                      </div>
-                      {logbook.company_name && (
-                        <p className="text-xs mt-0.5" style={{ color: '#888888' }}>
-                          {logbook.company_name}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-
-                  <p className="text-xs mb-2" style={{ color: '#888888' }}>
-                    Submitted: {formatDate(logbook.submitted_at)}
-                  </p>
-
-                  {logbook.activities && (
-                    <p className="text-sm mb-1 line-clamp-3" style={{ color: '#888888' }}>
-                      {logbook.activities.length > 120
-                        ? logbook.activities.slice(0, 120) + '…'
-                        : logbook.activities}
-                    </p>
-                  )}
-
-                  <div className="border-t my-3" style={{ borderColor: '#2a2a2a' }} />
-
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => handleApprove(logbook.id)}
-                      disabled={actionLoading}
-                      className="flex items-center gap-1.5 rounded-xl px-4 py-2 text-sm font-semibold transition-opacity disabled:opacity-50"
-                      style={{ backgroundColor: '#14532d', color: '#22c55e', border: '1px solid rgba(34,197,94,0.3)' }}
-                    >
-                      <Check size={14} />
-                      Approve
-                    </button>
-                    <button
-                      onClick={() => setCommentModal({ open: true, logbookId: logbook.id, action: 'needs_revision' })}
-                      className="flex items-center gap-1.5 rounded-xl px-4 py-2 text-sm font-semibold transition-opacity"
-                      style={{ backgroundColor: '#450a0a', color: '#ef4444', border: '1px solid rgba(239,68,68,0.3)' }}
-                    >
-                      <X size={14} />
-                      Reject
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </>
-      )}
-
-      {/* Reviewed tab */}
-      {activeTab === 'reviewed' && (
-        <>
-          {loading ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {[1, 2, 3, 4].map((i) => (
-                <SkeletonCard key={i} />
-              ))}
-            </div>
-          ) : reviewedLogbooks.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-20">
-              <FileText className="mb-3" size={40} style={{ color: '#888888' }} />
-              <p style={{ color: '#888888' }} className="text-sm">No reviewed logbooks yet</p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {reviewedLogbooks.map((logbook) => (
-                <div
-                  key={logbook.id}
-                  className="rounded-2xl border p-5"
-                  style={{ backgroundColor: '#1a1a1a', borderColor: '#2a2a2a' }}
-                >
-                  <div className="flex items-center gap-3 mb-2">
-                    <div
-                      className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm"
-                      style={{ backgroundColor: '#CFFF00', color: '#000' }}
-                    >
-                      {getInitials(logbook.student_name)}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="text-white font-semibold text-sm">{logbook.student_name}</span>
-                        <span
-                          className="rounded-full px-2 py-0.5 text-xs"
-                          style={{ backgroundColor: '#2a2a2a', color: '#888888' }}
-                        >
-                          Logbook Week {logbook.week_number}
-                        </span>
-                      </div>
-                      {logbook.company_name && (
-                        <p className="text-xs mt-0.5" style={{ color: '#888888' }}>
-                          {logbook.company_name}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-
-                  <p className="text-xs mb-3" style={{ color: '#888888' }}>
-                    Submitted: {formatDate(logbook.submitted_at)}
-                  </p>
-
-                  {logbook.activities && (
-                    <p className="text-sm mb-1 line-clamp-3" style={{ color: '#888888' }}>
-                      {logbook.activities.length > 120
-                        ? logbook.activities.slice(0, 120) + '…'
-                        : logbook.activities}
-                    </p>
-                  )}
-
-                  <div className="border-t my-3" style={{ borderColor: '#2a2a2a' }} />
-
-                  <div className="flex items-center justify-between">
-                    <span
-                      className="rounded-xl px-3 py-1 text-xs font-semibold"
-                      style={
-                        logbook.review_status === 'approved'
-                          ? { backgroundColor: '#14532d', color: '#22c55e' }
-                          : { backgroundColor: '#450a0a', color: '#ef4444' }
-                      }
-                    >
-                      {logbook.review_status === 'approved' ? 'Approved' : 'Needs Revision'}
-                    </span>
-                    {logbook.reviewed_at && (
-                      <span className="text-xs" style={{ color: '#888888' }}>
-                        Reviewed: {formatDate(logbook.reviewed_at)}
-                      </span>
-                    )}
-                  </div>
-
-                  {logbook.supervisor_comment && (
-                    <div className="rounded-xl p-3 mt-3 flex items-start gap-2" style={{ backgroundColor: '#2a2a2a' }}>
-                      <MessageSquare size={14} className="shrink-0 mt-0.5" style={{ color: '#888888' }} />
-                      <p className="text-sm text-white">{logbook.supervisor_comment}</p>
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-        </>
-      )}
-
-      {/* Comment modal */}
-      {commentModal.open && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center"
-          style={{ backgroundColor: 'rgba(0,0,0,0.6)' }}
-          onClick={() => {
-            if (!actionLoading) {
-              setCommentModal({ open: false, logbookId: null, action: null })
-              setComment('')
-            }
-          }}
-        >
-          <div
-            className="rounded-2xl p-6 w-full max-w-md border"
-            style={{ backgroundColor: '#1a1a1a', borderColor: '#2a2a2a' }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h2 className="text-lg font-bold text-white mb-1">Reject Logbook</h2>
-            <p className="text-sm mb-4" style={{ color: '#888888' }}>
-              Add a comment explaining why
-            </p>
-            <textarea
-              value={comment}
-              onChange={(e) => setComment(e.target.value)}
-              placeholder="Enter your feedback..."
-              className="w-full rounded-xl px-4 py-3 text-sm text-white outline-none resize-none"
+      {/* Tabs + Search */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px', gap: '16px', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: '4px', padding: '6px', backgroundColor: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: '14px' }}>
+          {[
+            { key: 'pending', label: 'Pending', count: pendingList.length },
+            { key: 'reviewed', label: 'Reviewed', count: reviewedList.length },
+          ].map((tab) => (
+            <button
+              key={tab.key}
+              type="button"
+              onClick={() => setActiveTab(tab.key)}
               style={{
-                backgroundColor: '#2a2a2a',
-                border: '1px solid #2a2a2a',
-                minHeight: 100,
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '9px 18px',
+                borderRadius: '10px',
+                border: 'none',
+                fontSize: '0.875rem',
+                fontWeight: '600',
+                cursor: 'pointer',
+                backgroundColor: activeTab === tab.key ? '#CFFF00' : 'transparent',
+                color: activeTab === tab.key ? '#000000' : '#888888',
+                transition: 'all 0.2s',
               }}
-            />
-            <div className="flex justify-end gap-2 mt-4">
-              <button
-                onClick={() => {
-                  setCommentModal({ open: false, logbookId: null, action: null })
-                  setComment('')
+            >
+              {tab.label}
+              <span
+                style={{
+                  padding: '1px 8px',
+                  borderRadius: '999px',
+                  fontSize: '0.7rem',
+                  fontWeight: '700',
+                  backgroundColor: activeTab === tab.key ? 'rgba(0,0,0,0.2)' : '#2a2a2a',
+                  color: activeTab === tab.key ? '#000000' : '#888888',
                 }}
-                disabled={actionLoading}
-                className="rounded-xl px-4 py-2.5 text-sm text-white transition-opacity disabled:opacity-50"
-                style={{ border: '1px solid #2a2a2a' }}
               >
-                Cancel
-              </button>
-              <button
-                onClick={handleReject}
-                disabled={actionLoading}
-                className="rounded-xl px-4 py-2.5 text-sm font-bold text-white transition-opacity disabled:opacity-50"
-                style={{ backgroundColor: '#ef4444' }}
-              >
-                {actionLoading ? 'Rejecting…' : 'Confirm Reject'}
-              </button>
-            </div>
+                {tab.count}
+              </span>
+            </button>
+          ))}
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 16px', backgroundColor: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: '12px', minWidth: '280px', flex: '1 1 200px', maxWidth: '380px' }}>
+          <Search size={15} style={{ color: '#888888', flexShrink: 0 }} />
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search by student name..."
+            style={{ background: 'none', border: 'none', outline: 'none', color: '#ffffff', fontSize: '0.875rem', width: '100%' }}
+          />
+        </div>
+      </div>
+
+      {/* Cards */}
+      {loading ? (
+        <div style={{ padding: '60px', textAlign: 'center', color: '#888888' }}>Loading approvals...</div>
+      ) : filteredList.length === 0 ? (
+        <div style={{ padding: '80px 20px', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px' }}>
+          <div style={{ width: '64px', height: '64px', backgroundColor: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <Clock size={28} style={{ color: '#888888' }} />
           </div>
+          <p style={{ fontSize: '1rem', fontWeight: '600', color: '#ffffff' }}>
+            {activeTab === 'pending' ? 'No pending approvals' : 'No reviewed submissions'}
+          </p>
+          <p style={{ fontSize: '0.875rem', color: '#888888' }}>
+            {activeTab === 'pending' ? 'All logbooks have been reviewed' : 'You have not reviewed any logbooks yet'}
+          </p>
+        </div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+          {filteredList.map((item) => (
+            <div
+              key={item.id}
+              style={{ backgroundColor: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: '16px', padding: '20px', transition: 'border-color 0.2s' }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.borderColor = '#3a3a3a'
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.borderColor = '#2a2a2a'
+              }}
+            >
+              {/* Card Header */}
+              <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '16px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <div
+                    style={{
+                      width: '44px',
+                      height: '44px',
+                      borderRadius: '50%',
+                      backgroundColor: '#CFFF00',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontWeight: '700',
+                      fontSize: '0.813rem',
+                      color: '#000',
+                      flexShrink: 0,
+                    }}
+                  >
+                    {item.avatar || item.student_name?.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase()}
+                  </div>
+                  <div>
+                    <p style={{ fontSize: '0.9rem', fontWeight: '700', color: '#ffffff', marginBottom: '2px' }}>{item.student_name}</p>
+                    <p style={{ fontSize: '0.813rem', color: '#888888' }}>
+                      {item.company_name} · Week {item.week_number}
+                    </p>
+                  </div>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <span style={{ fontSize: '0.75rem', color: '#888888' }}>
+                    {item.submitted_at ? new Date(item.submitted_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 'N/A'}
+                  </span>
+                  {activeTab === 'reviewed' && (
+                    <span
+                      style={{
+                        padding: '4px 12px',
+                        borderRadius: '999px',
+                        fontSize: '0.75rem',
+                        fontWeight: '700',
+                        backgroundColor: isApproved(item.review_status) ? '#14532d' : '#450a0a',
+                        color: isApproved(item.review_status) ? '#22c55e' : '#ef4444',
+                      }}
+                    >
+                      {isApproved(item.review_status) ? '✓ Approved' : '✗ Needs revision'}
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {/* Activities */}
+              <div style={{ backgroundColor: '#0f0f0f', borderRadius: '10px', padding: '14px', marginBottom: '16px' }}>
+                <p style={{ fontSize: '0.75rem', fontWeight: '700', color: '#888888', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Activities</p>
+                <p
+                  style={{
+                    fontSize: '0.875rem',
+                    color: '#cccccc',
+                    lineHeight: '1.6',
+                    overflow: 'hidden',
+                    display: '-webkit-box',
+                    WebkitLineClamp: expandedId === item.id ? 'unset' : 3,
+                    WebkitBoxOrient: 'vertical',
+                  }}
+                >
+                  {item.activities}
+                </p>
+                {item.activities?.length > 150 && (
+                  <button
+                    type="button"
+                    onClick={() => setExpandedId(expandedId === item.id ? null : item.id)}
+                    style={{ marginTop: '6px', background: 'none', border: 'none', color: '#CFFF00', fontSize: '0.75rem', cursor: 'pointer', padding: 0 }}
+                  >
+                    {expandedId === item.id ? 'Show less' : 'Read more'}
+                  </button>
+                )}
+              </div>
+
+              {/* Supervisor comment (reviewed) */}
+              {item.supervisor_comment && activeTab === 'reviewed' && (
+                <div style={{ padding: '12px 14px', backgroundColor: '#0f0f0f', borderRadius: '10px', borderLeft: '3px solid #CFFF00', marginBottom: '16px' }}>
+                  <p style={{ fontSize: '0.75rem', color: '#888888', marginBottom: '4px' }}>Supervisor Comment</p>
+                  <p style={{ fontSize: '0.875rem', color: '#ffffff' }}>{item.supervisor_comment}</p>
+                </div>
+              )}
+
+              {/* Actions (pending only) */}
+              {activeTab === 'pending' && (
+                <>
+                  {rejectingId === item.id ? (
+                    <div>
+                      <textarea
+                        value={comment}
+                        onChange={(e) => setComment(e.target.value)}
+                        placeholder="Add a comment explaining the rejection..."
+                        rows={2}
+                        style={{
+                          width: '100%',
+                          padding: '10px 14px',
+                          backgroundColor: '#0f0f0f',
+                          border: '1px solid #2a2a2a',
+                          borderRadius: '10px',
+                          color: '#ffffff',
+                          fontSize: '0.875rem',
+                          outline: 'none',
+                          resize: 'none',
+                          marginBottom: '10px',
+                          boxSizing: 'border-box',
+                        }}
+                        onFocus={(e) => {
+                          e.target.style.borderColor = '#ef4444'
+                        }}
+                        onBlur={(e) => {
+                          e.target.style.borderColor = '#2a2a2a'
+                        }}
+                      />
+                      <div style={{ display: 'flex', gap: '10px' }}>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setRejectingId(null)
+                            setComment('')
+                          }}
+                          style={{
+                            flex: 1,
+                            padding: '10px',
+                            backgroundColor: 'transparent',
+                            border: '1px solid #2a2a2a',
+                            borderRadius: '10px',
+                            color: '#888888',
+                            fontSize: '0.875rem',
+                            cursor: 'pointer',
+                          }}
+                        >
+                          Cancel
+                        </button>
+                        <button type="button" onClick={() => handleReject(item.id)} style={{ flex: 1, padding: '10px', backgroundColor: '#450a0a', border: '1px solid #ef4444', borderRadius: '10px', color: '#ef4444', fontSize: '0.875rem', fontWeight: '700', cursor: 'pointer' }}>
+                          Confirm Rejection
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                      <button
+                        type="button"
+                        onClick={() => navigate(`/supervisor/students/${item.student_id ?? ''}`)}
+                        disabled={!item.student_id}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                          padding: '10px 18px',
+                          backgroundColor: 'transparent',
+                          border: '1px solid #2a2a2a',
+                          borderRadius: '10px',
+                          color: '#ffffff',
+                          fontSize: '0.875rem',
+                          fontWeight: '500',
+                          cursor: item.student_id ? 'pointer' : 'not-allowed',
+                          opacity: item.student_id ? 1 : 0.5,
+                        }}
+                        onMouseEnter={(e) => {
+                          if (item.student_id) e.currentTarget.style.borderColor = '#CFFF00'
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.borderColor = '#2a2a2a'
+                        }}
+                      >
+                        <Eye size={15} /> View Profile
+                      </button>
+                      <button type="button" onClick={() => handleApprove(item.id)} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '10px', backgroundColor: '#14532d', border: '1px solid #22c55e', borderRadius: '10px', color: '#22c55e', fontSize: '0.875rem', fontWeight: '700', cursor: 'pointer', minWidth: '120px' }}>
+                        <CheckCircle size={16} /> Approve
+                      </button>
+                      <button type="button" onClick={() => setRejectingId(item.id)} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '10px', backgroundColor: '#450a0a', border: '1px solid #ef4444', borderRadius: '10px', color: '#ef4444', fontSize: '0.875rem', fontWeight: '700', cursor: 'pointer', minWidth: '120px' }}>
+                        <XCircle size={16} /> Reject
+                      </button>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          ))}
         </div>
       )}
     </div>
