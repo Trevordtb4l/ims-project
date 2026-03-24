@@ -12,17 +12,17 @@ import {
   MoreVertical,
   ChevronRight,
 } from 'lucide-react'
-import { Area, AreaChart, XAxis, YAxis, ResponsiveContainer, Tooltip } from 'recharts'
+import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Cell, Tooltip } from 'recharts'
 import api from '@/api/axios'
 
 const chartData = [
-  { day: 'Mon', rate: 65 },
+  { day: 'Mon', rate: 60 },
   { day: 'Tue', rate: 72 },
   { day: 'Wed', rate: 68 },
-  { day: 'Thu', rate: 95 },
-  { day: 'Fri', rate: 88 },
-  { day: 'Sat', rate: 75 },
-  { day: 'Sun', rate: 80 },
+  { day: 'Thu', rate: 85 },
+  { day: 'Fri', rate: 78 },
+  { day: 'Sat', rate: 65 },
+  { day: 'Sun', rate: 70 },
 ]
 
 const upcomingVisits = [
@@ -398,19 +398,20 @@ export default function SupervisorDashboard() {
               <MoreVertical size={16} style={{ color: '#888888', cursor: 'pointer' }} />
             </div>
             <p style={{ fontSize: '0.75rem', color: '#888888', marginBottom: '16px' }}>Weekly trend analysis</p>
-            <ResponsiveContainer width="100%" height={160}>
-              <AreaChart data={chartData} margin={{ top: 10, right: 10, bottom: 0, left: -20 }}>
-                <defs>
-                  <linearGradient id="supervisorGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#CFFF00" stopOpacity={0.3} />
-                    <stop offset="100%" stopColor="#CFFF00" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <XAxis dataKey="day" tick={{ fill: '#888888', fontSize: 11 }} axisLine={false} tickLine={false} />
-                <YAxis hide domain={[0, 100]} />
-                <Tooltip contentStyle={{ backgroundColor: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: '8px', color: '#ffffff', fontSize: '0.75rem' }} />
-                <Area type="monotone" dataKey="rate" stroke="#CFFF00" strokeWidth={2} fill="url(#supervisorGrad)" dot={false} />
-              </AreaChart>
+            <ResponsiveContainer width="100%" height={140}>
+              <BarChart data={chartData} margin={{ top: 10, right: 10, bottom: 0, left: -20 }} barCategoryGap="35%">
+                <XAxis dataKey="day" interval={0} tick={{ fill: '#888888', fontSize: 11 }} axisLine={false} tickLine={false} />
+                <YAxis hide domain={[0, 120]} />
+                <Tooltip
+                  contentStyle={{ backgroundColor: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: '8px', color: '#ffffff', fontSize: '0.75rem' }}
+                  cursor={{ fill: 'rgba(255,255,255,0.05)' }}
+                />
+                <Bar dataKey="rate" radius={[4, 4, 0, 0]}>
+                  {chartData.map((entry) => (
+                    <Cell key={entry.day} fill={entry.day === 'Thu' ? '#CFFF00' : '#4a5a00'} />
+                  ))}
+                </Bar>
+              </BarChart>
             </ResponsiveContainer>
             <p style={{ fontSize: '0.75rem', color: '#22c55e', marginTop: '8px', display: 'flex', alignItems: 'center', gap: '4px' }}>
               ↗ <strong>12% increase</strong> vs last week
