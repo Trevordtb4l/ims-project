@@ -1,117 +1,196 @@
-import { useState, useRef, useEffect } from 'react'
-import { NavLink, Outlet } from 'react-router-dom'
-import { useAuth } from '@/context/AuthContext'
-import { GraduationCap, Bell, LogOut } from 'lucide-react'
-
-const NAV = ['Dashboard', 'Students', 'Approvals', 'Reports']
-
-function getInitials(user) {
-  if (!user) return '?'
-  const first = user.first_name || user.firstName || ''
-  const last = user.last_name || user.lastName || ''
-  if (first || last) return `${first.charAt(0)}${last.charAt(0)}`.toUpperCase()
-  return (user.username || user.email || '?').charAt(0).toUpperCase()
-}
+import { useState } from 'react'
+import { Outlet, NavLink, useNavigate } from 'react-router-dom'
+import { GraduationCap, Bell, ChevronDown, LogOut } from 'lucide-react'
+import { useAuth } from '@/context/AuthContext.jsx'
 
 export default function SupervisorLayout() {
   const { user, logout } = useAuth()
   const [showDropdown, setShowDropdown] = useState(false)
-  const dropdownRef = useRef(null)
-
-  const initials = getInitials(user)
-
-  useEffect(() => {
-    function handleClickOutside(e) {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
-        setShowDropdown(false)
-      }
-    }
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [])
+  const navigate = useNavigate()
 
   return (
-    <div className="min-h-screen flex flex-col" style={{ backgroundColor: '#0f0f0f', color: '#ffffff' }}>
+    <div style={{ minHeight: '100vh', backgroundColor: '#0f0f0f' }}>
+      {/* Top Navbar */}
       <nav
-        className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-6 py-4"
-        style={{ backgroundColor: '#111111', borderBottom: '1px solid #2a2a2a' }}
+        style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          zIndex: 50,
+          backgroundColor: '#111111',
+          borderBottom: '1px solid #2a2a2a',
+          height: '64px',
+          display: 'flex',
+          alignItems: 'center',
+          padding: '0 32px',
+          justifyContent: 'space-between',
+        }}
       >
-        <div className="flex items-center gap-2">
+        {/* Logo */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           <div
-            className="w-8 h-8 rounded-lg flex items-center justify-center"
-            style={{ backgroundColor: '#CFFF00' }}
+            style={{
+              width: '36px',
+              height: '36px',
+              backgroundColor: '#CFFF00',
+              borderRadius: '10px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
           >
-            <GraduationCap size={18} style={{ color: '#000' }} />
+            <GraduationCap size={20} style={{ color: '#000000' }} />
           </div>
-          <span className="text-white font-bold text-lg">
+          <span style={{ color: '#ffffff', fontWeight: '700', fontSize: '1rem' }}>
             IMS <span style={{ color: '#CFFF00' }}>Supervisor</span>
           </span>
         </div>
 
+        {/* Center Nav */}
         <div
-          className="hidden md:flex items-center gap-1 px-2 py-1 rounded-xl"
-          style={{ backgroundColor: '#1a1a1a', border: '1px solid #2a2a2a' }}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '4px',
+            padding: '6px',
+            backgroundColor: '#1a1a1a',
+            border: '1px solid #2a2a2a',
+            borderRadius: '14px',
+          }}
         >
-          {NAV.map((item) => (
+          {[
+            { label: 'Dashboard', path: '/supervisor/dashboard' },
+            { label: 'Students', path: '/supervisor/students' },
+            { label: 'Approvals', path: '/supervisor/approvals' },
+            { label: 'Reports', path: '/supervisor/reports' },
+          ].map((item) => (
             <NavLink
-              key={item}
-              to={`/supervisor/${item.toLowerCase()}`}
-              className={({ isActive }) =>
-                `px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                  isActive ? 'text-white' : 'text-[#888888] hover:text-white'
-                }`
-              }
-              style={({ isActive }) => (isActive ? { backgroundColor: '#2a2a2a' } : {})}
+              key={item.label}
+              to={item.path}
+              style={({ isActive }) => ({
+                padding: '8px 18px',
+                borderRadius: '10px',
+                fontSize: '0.875rem',
+                fontWeight: isActive ? '600' : '400',
+                color: isActive ? '#ffffff' : '#888888',
+                backgroundColor: isActive ? '#2a2a2a' : 'transparent',
+                textDecoration: 'none',
+                transition: 'all 0.2s',
+                whiteSpace: 'nowrap',
+              })}
             >
-              {item}
+              {item.label}
             </NavLink>
           ))}
         </div>
 
-        <div className="flex items-center gap-4 relative" ref={dropdownRef}>
-          <button type="button" className="p-1 rounded-lg hover:opacity-80" aria-label="Notifications">
+        {/* Right side */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+          <div style={{ position: 'relative', cursor: 'pointer' }}>
             <Bell size={20} style={{ color: '#888888' }} />
-          </button>
-          <span className="text-white text-sm font-medium hidden sm:inline max-w-[140px] truncate">
-            {user?.first_name} {user?.last_name}
-          </span>
-          <button
-            type="button"
-            className="w-9 h-9 rounded-full flex items-center justify-center font-bold text-sm cursor-pointer border-0"
-            style={{ backgroundColor: '#CFFF00', color: '#000' }}
-            onClick={() => setShowDropdown(!showDropdown)}
-          >
-            {initials}
-          </button>
-          {showDropdown && (
             <div
-              className="absolute right-0 top-14 rounded-xl p-2 z-50 min-w-[160px]"
-              style={{ backgroundColor: '#1a1a1a', border: '1px solid #2a2a2a' }}
+              style={{
+                position: 'absolute',
+                top: '-4px',
+                right: '-4px',
+                width: '8px',
+                height: '8px',
+                backgroundColor: '#ef4444',
+                borderRadius: '50%',
+              }}
+            />
+          </div>
+          <div
+            style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', position: 'relative' }}
+            onClick={() => setShowDropdown(!showDropdown)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault()
+                setShowDropdown(!showDropdown)
+              }
+            }}
+            role="button"
+            tabIndex={0}
+          >
+            <div style={{ textAlign: 'right' }}>
+              <p style={{ fontSize: '0.875rem', fontWeight: '600', color: '#ffffff', lineHeight: 1 }}>
+                {user?.first_name} {user?.last_name}
+              </p>
+              <p style={{ fontSize: '0.75rem', color: '#888888', marginTop: '2px' }}>Faculty of Engineering</p>
+            </div>
+            <div
+              style={{
+                width: '36px',
+                height: '36px',
+                borderRadius: '50%',
+                backgroundColor: '#CFFF00',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontWeight: '700',
+                fontSize: '0.813rem',
+                color: '#000',
+              }}
             >
-              <button
-                type="button"
-                onClick={() => {
-                  setShowDropdown(false)
-                  logout()
-                }}
-                className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm w-full text-left border-0 cursor-pointer"
-                style={{ color: '#888888', background: 'transparent' }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = '#2a2a2a'
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = 'transparent'
+              {user?.first_name?.[0]}
+              {user?.last_name?.[0]}
+            </div>
+            <ChevronDown size={14} style={{ color: '#888888' }} />
+            {showDropdown && (
+              <div
+                style={{
+                  position: 'absolute',
+                  top: '48px',
+                  right: 0,
+                  backgroundColor: '#1a1a1a',
+                  border: '1px solid #2a2a2a',
+                  borderRadius: '12px',
+                  padding: '8px',
+                  minWidth: '160px',
+                  zIndex: 100,
                 }}
               >
-                <LogOut size={16} /> Log Out
-              </button>
-            </div>
-          )}
+                <button
+                  type="button"
+                  onClick={() => {
+                    logout()
+                    navigate('/login')
+                  }}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '10px',
+                    width: '100%',
+                    padding: '10px 14px',
+                    backgroundColor: 'transparent',
+                    border: 'none',
+                    color: '#888888',
+                    fontSize: '0.875rem',
+                    cursor: 'pointer',
+                    borderRadius: '8px',
+                    textAlign: 'left',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = '#2a2a2a'
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = 'transparent'
+                  }}
+                >
+                  <LogOut size={16} /> Log Out
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </nav>
 
-      <main className="flex-1 overflow-y-auto px-8 pb-10 pt-20" style={{ backgroundColor: '#0f0f0f' }}>
-        <Outlet />
+      {/* Main content */}
+      <main style={{ paddingTop: '64px', minHeight: '100vh', backgroundColor: '#0f0f0f' }}>
+        <div style={{ maxWidth: '1280px', margin: '0 auto', padding: '32px' }}>
+          <Outlet />
+        </div>
       </main>
     </div>
   )
