@@ -118,6 +118,7 @@ function buildDisplayStudent(studentApi, internshipApi, mock) {
     progress: prog,
     currentWeek: i ? cw : s.currentWeek ?? mock.currentWeek,
     totalWeeks: i ? tw : s.totalWeeks ?? mock.totalWeeks,
+    internship_id: i?.id ?? s.internship_id ?? null,
   }
 }
 
@@ -244,21 +245,27 @@ export default function StudentDetail() {
   }
 
   const handleSubmitEval = async () => {
-    const intId = internship?.id
-    if (!intId) {
-      console.log('Eval error: no internship id')
+    if (!score) {
+      alert('Please enter a score')
+      return
+    }
+    const n = parseInt(score, 10)
+    if (Number.isNaN(n) || n < 0 || n > 100) {
+      alert('Please enter a valid score between 0 and 100')
       return
     }
     setEvalLoading(true)
     try {
-      const commentsBlock = [`Performance: ${performance}`, evalComment.trim()].filter(Boolean).join('\n\n')
       const payload = {
-        internship: intId,
-        score: Number(score),
-        comments: commentsBlock,
+        student: parseInt(String(studentId), 10),
+        internship: internship?.id ?? student?.internship_id ?? null,
+        score: n,
+        performance,
+        comments: evalComment,
       }
       if (evaluation?.id) {
-        await api.patch(`/evaluations/${evaluation.id}/`, payload)
+        const { data } = await api.patch(`/evaluations/${evaluation.id}/`, payload)
+        setEvaluation(data)
       } else {
         const { data } = await api.post('/evaluations/', payload)
         setEvaluation(data)
@@ -267,6 +274,10 @@ export default function StudentDetail() {
       setTimeout(() => setEvalSuccess(false), 3000)
     } catch (err) {
       console.log('Eval error:', err.response?.data)
+      const errData = err.response?.data
+      if (errData) {
+        alert(JSON.stringify(errData))
+      }
     } finally {
       setEvalLoading(false)
     }
@@ -281,7 +292,6 @@ export default function StudentDetail() {
     .toUpperCase()
 
   const scoreNum = score === '' ? NaN : Number(score)
-  const canSubmitEval = internship?.id && score !== '' && !Number.isNaN(scoreNum) && scoreNum >= 0 && scoreNum <= 100
 
   if (loading) {
     return (
@@ -724,12 +734,6 @@ export default function StudentDetail() {
               <h3 style={{ fontSize: '1rem', fontWeight: '700', color: '#ffffff' }}>Student Evaluation</h3>
             </div>
 
-            {!internship?.id && (
-              <p style={{ fontSize: '0.813rem', color: '#888888', marginBottom: '16px' }}>
-                Link an active internship before submitting an evaluation.
-              </p>
-            )}
-
             {evalSuccess && (
               <div
                 style={{
@@ -815,7 +819,7 @@ export default function StudentDetail() {
               <button
                 type="button"
                 onClick={handleSubmitEval}
-                disabled={evalLoading || !canSubmitEval}
+                disabled={evalLoading}
                 style={{
                   width: '100%',
                   padding: '12px',
@@ -825,8 +829,8 @@ export default function StudentDetail() {
                   color: '#000000',
                   fontSize: '0.875rem',
                   fontWeight: '700',
-                  cursor: evalLoading || !canSubmitEval ? 'not-allowed' : 'pointer',
-                  opacity: evalLoading || !canSubmitEval ? 0.6 : 1,
+                  cursor: evalLoading ? 'not-allowed' : 'pointer',
+                  opacity: evalLoading ? 0.6 : 1,
                   transition: 'opacity 0.2s',
                 }}
               >

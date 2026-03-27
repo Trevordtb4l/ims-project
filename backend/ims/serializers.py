@@ -319,6 +319,8 @@ class LogbookSerializer(serializers.ModelSerializer):
 class EvaluationSerializer(serializers.ModelSerializer):
     supervisor_name = serializers.SerializerMethodField()
     student_name = serializers.SerializerMethodField()
+    student = serializers.IntegerField(write_only=True, required=False)
+    performance = serializers.CharField(write_only=True, required=False, allow_blank=True)
 
     class Meta:
         model = Evaluation
@@ -326,7 +328,12 @@ class EvaluationSerializer(serializers.ModelSerializer):
             "id", "internship", "supervisor", "score",
             "comments", "submitted_at",
             "supervisor_name", "student_name",
+            "student", "performance",
         ]
+        extra_kwargs = {
+            "internship": {"required": False},
+            "supervisor": {"read_only": True},
+        }
 
     def get_supervisor_name(self, obj):
         return obj.supervisor.get_full_name()
@@ -335,6 +342,63 @@ class EvaluationSerializer(serializers.ModelSerializer):
         if obj.internship and obj.internship.student:
             return obj.internship.student.user.get_full_name()
         return None
+
+    def _resolve_internship(self, student_id, internship):
+        if internship is not None:
+            return internship
+        if student_id is None:
+            return None
+        inst = (
+            Internship.objects.filter(student_id=student_id)
+            .select_related("student")
+            .order_by("-start_date")
+            .first()
+        )
+        if inst is None:
+            raise serializers.ValidationError(
+                {"student": "No internship found for this student."}
+            )
+        return inst
+
+    def _merge_performance(self, performance, comments):
+        comments = comments or ""
+        if performance:
+            return f"Performance: {performance}\n\n{comments}".strip()
+        return comments
+
+    def create(self, validated_data):
+        student_id = validated_data.pop("student", None)
+        performance = validated_data.pop("performance", None)
+        internship = validated_data.pop("internship", None)
+        internship = self._resolve_internship(student_id, internship)
+        if internship is None:
+            raise serializers.ValidationError(
+                {"internship": "Provide internship id or a student id to resolve it."}
+            )
+        validated_data["internship"] = internship
+        validated_data["comments"] = self._merge_performance(
+            performance, validated_data.get("comments", "")
+        )
+        return super().create(validated_data)
+
+    def update(self, instance, validated_data):
+        student_id = validated_data.pop("student", None)
+        performance = validated_data.pop("performance", None)
+        incoming = validated_data.pop("internship", serializers.empty)
+        if incoming is serializers.empty:
+            internship = instance.internship
+        elif incoming is None:
+            if student_id is not None:
+                internship = self._resolve_internship(student_id, None)
+            else:
+                internship = instance.internship
+        else:
+            internship = incoming
+        validated_data["internship"] = internship
+        if performance is not None:
+            comments = validated_data.get("comments", instance.comments)
+            validated_data["comments"] = self._merge_performance(performance, comments)
+        return super().update(instance, validated_data)
 
 
 # ---------------------------------------------------------------------------
