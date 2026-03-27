@@ -1,18 +1,23 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { FileText, Download, Clock, Award, AlertTriangle, Star, ChevronRight } from 'lucide-react'
+import { FileText, Download, Clock, Award, AlertTriangle, Star, ChevronRight, Calendar } from 'lucide-react'
 import api from '@/api/axios'
 import { useToast } from '@/components/Toast.jsx'
-
-const MOCK_DUE_SOON = [
-  { id: 1, student_name: 'Alice Johnson', type: 'Final Report', due_date: '2026-03-10', days_remaining: 6 },
-  { id: 2, student_name: 'Bob Smith', type: 'Progress Report', due_date: '2026-03-08', days_remaining: 4 },
-]
+import ReportPrintView from '@/components/ReportPrintView.jsx'
 
 const MOCK_REPORTS = [
-  { id: 1, student_name: 'Alice Johnson', type: 'Mid-term Report', submitted_at: '2026-02-15', grade: 'A', status: 'graded' },
-  { id: 2, student_name: 'Bob Smith', type: 'Final Report', submitted_at: '2026-02-20', grade: null, status: 'pending' },
-  { id: 3, student_name: 'Carol Lee', type: 'Weekly Summary', submitted_at: '2026-02-25', grade: 'B+', status: 'graded' },
+  { id: 1, student_name: 'Andeh Trevor', type: 'Software Engineering Internship', submitted_at: '2026-02-28', grade: 'A', status: 'graded' },
+  { id: 2, student_name: 'Fomban Giscard', type: 'Network Engineering Internship', submitted_at: '2026-02-20', grade: 'B+', status: 'graded' },
+  { id: 3, student_name: 'Nkeng Marlène', type: 'Data Science Internship', submitted_at: '2026-02-25', grade: 'A-', status: 'graded' },
+  { id: 4, student_name: 'Tchamba Romuald', type: 'Cybersecurity Internship', submitted_at: '2026-03-01', grade: null, status: 'pending' },
+  { id: 5, student_name: 'Mbarga Estelle', type: 'Mobile Development Internship', submitted_at: '2026-03-05', grade: null, status: 'pending' },
+  { id: 6, student_name: 'Kouam Blaise', type: 'Systems Administration Internship', submitted_at: null, grade: null, status: 'overdue' },
+]
+
+const MOCK_DUE_SOON = [
+  { id: 4, student_name: 'Tchamba Romuald', type: 'Cybersecurity Internship', due_date: '2026-03-30', days_remaining: 3 },
+  { id: 5, student_name: 'Mbarga Estelle', type: 'Mobile Development Internship', due_date: '2026-04-02', days_remaining: 6 },
+  { id: 6, student_name: 'Kouam Blaise', type: 'Systems Administration Internship', due_date: '2026-03-27', days_remaining: 0 },
 ]
 
 function SkeletonRow() {
@@ -54,6 +59,8 @@ export default function Reports() {
   const [dueSoon, setDueSoon] = useState([])
   const [stats, setStats] = useState({ total: 0, graded: 0, pending: 0, avgGrade: '—' })
   const [editingGrades, setEditingGrades] = useState({})
+  const [showPrintView, setShowPrintView] = useState(false)
+  const [printReportId, setPrintReportId] = useState(null)
   const navigate = useNavigate()
   const { toast } = useToast()
 
@@ -94,30 +101,18 @@ export default function Reports() {
         const res = await api.get('/reports/')
         const data = Array.isArray(res.data) ? res.data : res.data.results || []
 
-        if (data.length > 0) {
-          setReports(data)
-          setStats(calculateStats(data))
+        const realReports = data.map(r => ({
+          ...r,
+          status: r.grade ? 'graded' : 'pending',
+          type: r.type || 'Internship Report',
+        }))
 
-          const upcoming = data
-            .filter((r) => !r.grade && r.due_date)
-            .filter((r) => {
-              const due = new Date(r.due_date)
-              const now = new Date()
-              const diff = (due - now) / (1000 * 60 * 60 * 24)
-              return diff >= 0 && diff <= 7
-            })
-            .slice(0, 3)
-            .map((r) => ({
-              ...r,
-              days_remaining: Math.ceil((new Date(r.due_date) - new Date()) / (1000 * 60 * 60 * 24)),
-            }))
+        const mockWithoutReal = MOCK_REPORTS.filter(m => !realReports.find(r => r.id === m.id))
+        const merged = [...realReports, ...mockWithoutReal]
 
-          setDueSoon(upcoming.length > 0 ? upcoming : MOCK_DUE_SOON)
-        } else {
-          setReports(MOCK_REPORTS)
-          setStats(calculateStats(MOCK_REPORTS))
-          setDueSoon(MOCK_DUE_SOON)
-        }
+        setReports(merged)
+        setStats(calculateStats(merged))
+        setDueSoon(MOCK_DUE_SOON)
       } catch {
         setReports(MOCK_REPORTS)
         setStats(calculateStats(MOCK_REPORTS))
@@ -148,70 +143,98 @@ export default function Reports() {
     }
   }
 
-  const handleDownload = async (reportId) => {
-    try {
-      const res = await api.get(`/reports/${reportId}/download/`, { responseType: 'blob' })
-      const url = window.URL.createObjectURL(new Blob([res.data]))
-      const link = document.createElement('a')
-      link.href = url
-      link.setAttribute('download', `report-${reportId}.pdf`)
-      document.body.appendChild(link)
-      link.click()
-      link.remove()
-      window.URL.revokeObjectURL(url)
-    } catch {
-      window.open(`/api/v1/reports/${reportId}/download/`, '_blank')
-    }
+  const handleReview = (reportId) => {
+    navigate(`/supervisor/reports/${reportId}`)
   }
 
-  const STAT_CARDS = [
-    { label: 'Total Reports', value: stats.total, icon: FileText, color: '#ffffff' },
-    { label: 'Graded', value: stats.graded, icon: Award, color: '#22c55e' },
-    { label: 'Pending Review', value: stats.pending, icon: Clock, color: '#CFFF00' },
-    { label: 'Average Grade', value: stats.avgGrade, icon: Star, color: '#ffffff' },
-  ]
+  const handleDownload = (report) => {
+    setPrintReportId(report.id)
+    setShowPrintView(true)
+  }
+
+  const closePrintView = useCallback(() => {
+    setShowPrintView(false)
+    setPrintReportId(null)
+  }, [])
 
   return (
-    <div className="min-h-screen p-6" style={{ backgroundColor: '#0f0f0f' }}>
-      <h1 className="text-2xl font-bold text-white mb-6">Reports</h1>
+    <>
+    <div className="no-print" style={{ backgroundColor: '#0f0f0f' }}>
+      <div style={{ marginBottom: '32px' }}>
+        <h1 style={{ fontSize: '2rem', fontWeight: '800', color: '#ffffff', marginBottom: '6px' }}>Reports</h1>
+        <p style={{ fontSize: '0.875rem', color: '#888888' }}>Review and grade student internship reports</p>
+      </div>
 
       {/* Summary Stats */}
-      <div className="flex gap-4 mb-6 flex-wrap">
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px', marginBottom: '28px' }}>
         {loading
-          ? [1, 2, 3, 4].map((i) => <SkeletonStatCard key={i} />)
-          : STAT_CARDS.map((card) => (
+          ? [1, 2, 3, 4].map((i) => (
+              <div key={i} style={{ minWidth: 0 }}>
+                <SkeletonStatCard />
+              </div>
+            ))
+          : [
+              { icon: <FileText size={18} />, label: 'Total Reports', value: stats.total, color: '#ffffff' },
+              { icon: <Award size={18} />, label: 'Graded', value: stats.graded, color: '#22c55e' },
+              { icon: <Clock size={18} />, label: 'Pending Review', value: stats.pending, color: '#CFFF00' },
+              { icon: <Star size={18} />, label: 'Average Grade', value: stats.avgGrade, color: '#CFFF00' },
+            ].map((stat, i) => (
               <div
-                key={card.label}
-                className="rounded-2xl border px-5 py-4 flex-1 min-w-[140px]"
-                style={{ backgroundColor: '#1a1a1a', borderColor: '#2a2a2a' }}
+                key={i}
+                style={{
+                  backgroundColor: '#1a1a1a',
+                  border: '1px solid #2a2a2a',
+                  borderRadius: '14px',
+                  padding: '20px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '14px',
+                }}
               >
-                <div className="flex items-center gap-2 mb-2">
-                  <card.icon size={16} style={{ color: '#888888' }} />
-                  <span className="text-xs" style={{ color: '#888888' }}>
-                    {card.label}
-                  </span>
+                <div
+                  style={{
+                    width: '40px',
+                    height: '40px',
+                    backgroundColor: '#0f0f0f',
+                    border: '1px solid #2a2a2a',
+                    borderRadius: '10px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: '#CFFF00',
+                    flexShrink: 0,
+                  }}
+                >
+                  {stat.icon}
                 </div>
-                <p className="text-2xl font-bold" style={{ color: card.color }}>
-                  {card.value}
-                </p>
+                <div>
+                  <p style={{ fontSize: '0.75rem', color: '#888888', marginBottom: '4px' }}>{stat.label}</p>
+                  <p style={{ fontSize: '1.5rem', fontWeight: '800', color: stat.color, lineHeight: 1 }}>{stat.value}</p>
+                </div>
               </div>
             ))}
       </div>
 
       {/* Due Soon */}
-      <div className="mb-6">
-        <div className="flex items-center gap-2 mb-3">
+      <div style={{ marginBottom: '28px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
           <AlertTriangle size={18} style={{ color: '#ef4444' }} />
-          <h2 className="text-lg font-bold text-white">Due Soon</h2>
+          <h2 style={{ fontSize: '1.125rem', fontWeight: '700', color: '#ffffff' }}>Due Soon</h2>
         </div>
 
         {loading ? (
-          <div className="flex gap-4">
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '14px' }}>
             {[1, 2].map((i) => (
               <div
                 key={i}
-                className="rounded-2xl border p-5 min-w-[260px] animate-pulse"
-                style={{ backgroundColor: '#1a1a1a', borderColor: '#2a2a2a', borderLeftWidth: 4, borderLeftColor: '#ef4444' }}
+                className="animate-pulse"
+                style={{
+                  backgroundColor: '#1a1a1a',
+                  border: '1px solid #450a0a',
+                  borderRadius: '14px',
+                  padding: '20px',
+                  borderLeft: '4px solid #ef4444',
+                }}
               >
                 <div className="h-4 w-32 rounded mb-2" style={{ backgroundColor: '#2a2a2a' }} />
                 <div className="h-3 w-24 rounded mb-3" style={{ backgroundColor: '#2a2a2a' }} />
@@ -220,39 +243,72 @@ export default function Reports() {
             ))}
           </div>
         ) : dueSoon.length === 0 ? (
-          <p className="text-sm text-center py-8" style={{ color: '#888888' }}>
+          <p style={{ fontSize: '0.875rem', textAlign: 'center', padding: '32px 0', color: '#888888' }}>
             No reports due soon
           </p>
         ) : (
-          <div className="flex gap-4 overflow-x-auto pb-2">
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '14px' }}>
             {dueSoon.map((report) => (
               <div
                 key={report.id}
-                className="rounded-2xl border p-5 min-w-[260px] shrink-0"
                 style={{
                   backgroundColor: '#1a1a1a',
-                  borderColor: '#2a2a2a',
-                  borderLeftWidth: 4,
-                  borderLeftColor: '#ef4444',
+                  border: '1px solid #450a0a',
+                  borderRadius: '14px',
+                  padding: '20px',
+                  borderLeft: '4px solid #ef4444',
                 }}
               >
-                <p className="text-white font-bold text-sm mb-1">{report.student_name}</p>
-                <p className="text-sm mb-1" style={{ color: '#888888' }}>
-                  Report Type: {report.type}
-                </p>
-                <p className="text-sm mb-1" style={{ color: '#888888' }}>
-                  Due: {formatDate(report.due_date)}
-                </p>
-                <p className="text-sm font-bold mb-3" style={{ color: '#ef4444' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
+                  <div
+                    style={{
+                      width: '36px',
+                      height: '36px',
+                      borderRadius: '50%',
+                      backgroundColor: '#CFFF00',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontWeight: '700',
+                      fontSize: '0.75rem',
+                      color: '#000',
+                      flexShrink: 0,
+                    }}
+                  >
+                    {report.student_name?.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase()}
+                  </div>
+                  <div>
+                    <p style={{ fontSize: '0.875rem', fontWeight: '700', color: '#ffffff', marginBottom: '1px' }}>
+                      {report.student_name}
+                    </p>
+                    <p style={{ fontSize: '0.75rem', color: '#888888' }}>{report.type}</p>
+                  </div>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px' }}>
+                  <Calendar size={13} style={{ color: '#888888' }} />
+                  <span style={{ fontSize: '0.75rem', color: '#888888' }}>Due: {formatDate(report.due_date)}</span>
+                </div>
+                <p style={{ fontSize: '0.813rem', fontWeight: '700', color: '#ef4444', marginBottom: '14px' }}>
                   {report.days_remaining} days remaining
                 </p>
                 <button
-                  onClick={() => navigate(`/supervisor/reports/${report.id}`)}
-                  className="rounded-xl px-4 py-2 text-sm font-bold flex items-center gap-1"
-                  style={{ backgroundColor: '#CFFF00', color: '#000' }}
+                  type="button"
+                  onClick={() => handleReview(report.id)}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    padding: '8px 16px',
+                    backgroundColor: '#CFFF00',
+                    border: 'none',
+                    borderRadius: '8px',
+                    color: '#000000',
+                    fontSize: '0.813rem',
+                    fontWeight: '700',
+                    cursor: 'pointer',
+                  }}
                 >
-                  Review
-                  <ChevronRight size={14} />
+                  Review <ChevronRight size={14} />
                 </button>
               </div>
             ))}
@@ -261,31 +317,47 @@ export default function Reports() {
       </div>
 
       {/* All Reports Table */}
-      <div className="rounded-2xl border p-6" style={{ backgroundColor: '#1a1a1a', borderColor: '#2a2a2a' }}>
-        <h2 className="text-lg font-bold text-white mb-4">All Reports</h2>
-
-        {loading ? (
-          <table className="w-full">
+      {loading ? (
+        <div style={{ backgroundColor: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: '16px', overflow: 'hidden' }}>
+          <div style={{ padding: '20px 24px', borderBottom: '1px solid #2a2a2a' }}>
+            <h2 style={{ fontSize: '1.125rem', fontWeight: '700', color: '#ffffff' }}>All Reports</h2>
+          </div>
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <tbody>
               {[1, 2, 3].map((i) => (
                 <SkeletonRow key={i} />
               ))}
             </tbody>
           </table>
-        ) : reports.length === 0 ? (
-          <p className="text-sm text-center py-12" style={{ color: '#888888' }}>
-            No reports found
-          </p>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left">
+        </div>
+      ) : reports.length === 0 ? (
+        <div style={{ backgroundColor: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: '16px', overflow: 'hidden' }}>
+          <div style={{ padding: '20px 24px', borderBottom: '1px solid #2a2a2a' }}>
+            <h2 style={{ fontSize: '1.125rem', fontWeight: '700', color: '#ffffff' }}>All Reports</h2>
+          </div>
+          <p style={{ fontSize: '0.875rem', textAlign: 'center', padding: '48px 24px', color: '#888888' }}>No reports found</p>
+        </div>
+      ) : (
+        <div style={{ backgroundColor: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: '16px', overflow: 'hidden' }}>
+          <div style={{ padding: '20px 24px', borderBottom: '1px solid #2a2a2a' }}>
+            <h2 style={{ fontSize: '1.125rem', fontWeight: '700', color: '#ffffff' }}>All Reports</h2>
+          </div>
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr style={{ borderBottom: '1px solid #2a2a2a' }}>
                   {['Student', 'Report Type', 'Submitted', 'Grade', 'Status', 'Actions'].map((h) => (
                     <th
                       key={h}
-                      className="px-4 py-3 text-xs font-semibold uppercase tracking-wider"
-                      style={{ color: '#888888' }}
+                      style={{
+                        padding: '14px 20px',
+                        textAlign: 'left',
+                        fontSize: '0.75rem',
+                        fontWeight: '700',
+                        color: '#888888',
+                        letterSpacing: '0.05em',
+                        textTransform: 'uppercase',
+                      }}
                     >
                       {h}
                     </th>
@@ -293,49 +365,130 @@ export default function Reports() {
                 </tr>
               </thead>
               <tbody>
-                {reports.map((report) => (
-                  <tr key={report.id} style={{ borderBottom: '1px solid #2a2a2a' }}>
-                    <td className="px-4 py-3 text-sm text-white">{report.student_name}</td>
-                    <td className="px-4 py-3 text-sm" style={{ color: '#888888' }}>
-                      {report.type}
+                {reports.map((report, i) => (
+                  <tr
+                    key={report.id}
+                    style={{
+                      borderBottom: i < reports.length - 1 ? '1px solid #2a2a2a' : 'none',
+                      transition: 'background-color 0.15s',
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.backgroundColor = '#0f0f0f'
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = 'transparent'
+                    }}
+                  >
+                    <td style={{ padding: '16px 20px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        <div
+                          style={{
+                            width: '34px',
+                            height: '34px',
+                            borderRadius: '50%',
+                            backgroundColor: '#CFFF00',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontWeight: '700',
+                            fontSize: '0.7rem',
+                            color: '#000',
+                            flexShrink: 0,
+                          }}
+                        >
+                          {report.student_name?.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase()}
+                        </div>
+                        <span style={{ fontSize: '0.875rem', fontWeight: '600', color: '#ffffff' }}>{report.student_name}</span>
+                      </div>
                     </td>
-                    <td className="px-4 py-3 text-sm" style={{ color: '#888888' }}>
+                    <td style={{ padding: '16px 20px', fontSize: '0.875rem', color: '#888888' }}>{report.type}</td>
+                    <td style={{ padding: '16px 20px', fontSize: '0.875rem', color: '#888888', whiteSpace: 'nowrap' }}>
                       {formatDate(report.submitted_at)}
                     </td>
-                    <td className="px-4 py-3">
+                    <td style={{ padding: '16px 20px' }}>
                       <input
                         type="text"
                         defaultValue={report.grade || ''}
-                        onChange={(e) =>
-                          setEditingGrades((prev) => ({ ...prev, [report.id]: e.target.value }))
-                        }
-                        onBlur={() => handleGradeBlur(report)}
-                        className="w-16 rounded-lg px-2 py-1 text-center text-sm text-white outline-none"
-                        style={{ backgroundColor: '#2a2a2a', border: '1px solid #2a2a2a' }}
+                        onChange={(e) => setEditingGrades((prev) => ({ ...prev, [report.id]: e.target.value }))}
                         placeholder="—"
+                        style={{
+                          width: '64px',
+                          padding: '6px 10px',
+                          backgroundColor: '#0f0f0f',
+                          border: '1px solid #2a2a2a',
+                          borderRadius: '8px',
+                          color: '#ffffff',
+                          fontSize: '0.875rem',
+                          fontWeight: '700',
+                          outline: 'none',
+                          textAlign: 'center',
+                        }}
+                        onFocus={(e) => {
+                          e.target.style.borderColor = '#CFFF00'
+                        }}
+                        onBlur={(e) => {
+                          e.target.style.borderColor = '#2a2a2a'
+                          handleGradeBlur(report)
+                        }}
                       />
                     </td>
-                    <td className="px-4 py-3">
+                    <td style={{ padding: '16px 20px' }}>
                       <span
-                        className="rounded-full px-3 py-1 text-xs font-semibold"
-                        style={STATUS_STYLES[report.status] || STATUS_STYLES.pending}
+                        style={{
+                          padding: '4px 12px',
+                          borderRadius: '999px',
+                          fontSize: '0.75rem',
+                          fontWeight: '700',
+                          ...(STATUS_STYLES[report.status] || STATUS_STYLES.pending),
+                        }}
                       >
                         {STATUS_LABELS[report.status] || 'Pending'}
                       </span>
                     </td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-3">
+                    <td style={{ padding: '16px 20px' }}>
+                      <div style={{ display: 'flex', gap: '8px' }}>
                         <button
-                          onClick={() => handleDownload(report.id)}
-                          className="transition-opacity hover:opacity-80"
-                          title="Download"
+                          type="button"
+                          onClick={() => handleDownload(report)}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            padding: '6px 12px',
+                            backgroundColor: 'transparent',
+                            border: '1px solid #2a2a2a',
+                            borderRadius: '8px',
+                            color: '#888888',
+                            fontSize: '0.75rem',
+                            cursor: 'pointer',
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.borderColor = '#CFFF00'
+                            e.currentTarget.style.color = '#ffffff'
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.borderColor = '#2a2a2a'
+                            e.currentTarget.style.color = '#888888'
+                          }}
                         >
-                          <Download size={16} style={{ color: '#CFFF00' }} />
+                          <Download size={13} /> Download
                         </button>
                         <button
-                          onClick={() => navigate(`/supervisor/reports/${report.id}`)}
-                          className="text-sm font-semibold transition-opacity hover:opacity-80"
-                          style={{ color: '#CFFF00' }}
+                          type="button"
+                          onClick={() => handleReview(report.id)}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            padding: '6px 12px',
+                            backgroundColor: '#CFFF00',
+                            border: 'none',
+                            borderRadius: '8px',
+                            color: '#000000',
+                            fontSize: '0.75rem',
+                            fontWeight: '700',
+                            cursor: 'pointer',
+                          }}
                         >
                           Review
                         </button>
@@ -346,8 +499,12 @@ export default function Reports() {
               </tbody>
             </table>
           </div>
-        )}
-      </div>
+        </div>
+      )}
     </div>
+    {showPrintView && printReportId != null && (
+      <ReportPrintView reportId={printReportId} onClose={closePrintView} />
+    )}
+    </>
   )
 }

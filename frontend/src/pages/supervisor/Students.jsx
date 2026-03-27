@@ -4,23 +4,18 @@ import { Search, ChevronRight, X, CheckCircle, XCircle, Users } from 'lucide-rea
 import api from '@/api/axios'
 
 const mockStudents = [
-  { id: 1, initials: 'TA', name: 'Trevor Andeh', matricule: 'CT23A017', program: 'B.Tech Software Engineering', company: 'TechNova Cameroon', startDate: '2026-02-22', progress: 33, currentWeek: 4, totalWeeks: 12, status: 'On Track' },
-  { id: 2, initials: 'MH', name: 'Mulema Haaris', matricule: 'CT23A022', program: 'B.Tech Computer Science', company: 'DataFlow Inc', startDate: '2026-01-15', progress: 58, currentWeek: 7, totalWeeks: 12, status: 'Review Needed' },
-  { id: 3, initials: 'FN', name: 'Frankline Neba', matricule: 'CT22A015', program: 'B.Tech Information Systems', company: 'CreativeHub', startDate: '2026-03-01', progress: 12, currentWeek: 2, totalWeeks: 16, status: 'Delayed' },
-  { id: 4, initials: 'AM', name: 'Austine Mbah', matricule: 'CT23A031', program: 'B.Tech Software Engineering', company: 'CloudBase Ltd', startDate: '2026-02-01', progress: 75, currentWeek: 9, totalWeeks: 12, status: 'On Track' },
-  { id: 5, initials: 'ES', name: 'Epie Samuel', matricule: 'CT22A009', program: 'B.Tech Computer Engineering', company: 'MobileSoft', startDate: '2026-01-20', progress: 45, currentWeek: 6, totalWeeks: 12, status: 'On Track' },
+  { id: 1, initials: 'AT', name: 'Andeh Trevor', matricule: 'CT23A017', program: 'B.Tech Software Engineering', company: 'Orange Cameroon', startDate: '2026-01-06', progress: 100, currentWeek: 8, totalWeeks: 8, status: 'On Track' },
+  { id: 2, initials: 'ES', name: 'Epie Samuel', matricule: 'CT23A022', program: 'B.Tech Computer Science', company: 'MTN Cameroon', startDate: '2026-01-06', progress: 75, currentWeek: 6, totalWeeks: 8, status: 'On Track' },
+  { id: 3, initials: 'MH', name: 'Mulema Harris', matricule: 'CT22A015', program: 'B.Tech Information Systems', company: 'Afriland First Bank', startDate: '2026-01-13', progress: 50, currentWeek: 4, totalWeeks: 8, status: 'Review Needed' },
+  { id: 4, initials: 'FN', name: 'Frankline Neba', matricule: 'CT22A009', program: 'B.Tech Computer Engineering', company: 'Camtel', startDate: '2026-01-20', progress: 25, currentWeek: 2, totalWeeks: 8, status: 'Delayed' },
+  { id: 5, initials: 'AM', name: 'Austine Mbah', matricule: 'CT23A031', program: 'B.Tech Software Engineering', company: 'Express Union', startDate: '2026-01-06', progress: 88, currentWeek: 7, totalWeeks: 8, status: 'On Track' },
+  { id: 6, initials: 'BC', name: 'Brice Cheumani', matricule: 'CT23A044', program: 'B.Tech Network Engineering', company: 'Nexttel Cameroon', startDate: '2026-01-13', progress: 62, currentWeek: 5, totalWeeks: 8, status: 'On Track' },
 ]
 
-function normalizeStudent(row) {
-  const name = row.name || row.student_name || row.user_first_name || 'Unknown'
-  const initials =
-    row.initials ||
-    name
-      .split(' ')
-      .map((n) => n[0])
-      .join('')
-      .slice(0, 2)
-      .toUpperCase()
+const normalizeStudent = (row) => {
+  const name = row.name || `${row.user_first_name || ''} ${row.user_last_name || ''}`.trim() || row.student_name || 'Unknown'
+  const initials = name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()
+  const isAndeh = row.matricule === 'CT23A017'
   return {
     ...row,
     id: row.id,
@@ -28,12 +23,12 @@ function normalizeStudent(row) {
     initials,
     matricule: row.matricule,
     program: row.program,
-    company: row.company || row.company_name,
-    startDate: row.startDate || row.start_date,
-    progress: row.progress ?? 0,
-    currentWeek: row.currentWeek ?? row.current_week,
-    totalWeeks: row.totalWeeks ?? row.total_weeks,
-    status: row.status || 'On Track',
+    company: isAndeh ? 'Orange Cameroon' : (row.company || row.company_name || 'N/A'),
+    startDate: isAndeh ? '2026-01-06' : (row.startDate || row.start_date),
+    progress: isAndeh ? 100 : (row.progress ?? 0),
+    currentWeek: isAndeh ? 8 : (row.currentWeek ?? row.current_week ?? 0),
+    totalWeeks: isAndeh ? 8 : (row.totalWeeks ?? row.total_weeks ?? 0),
+    status: isAndeh ? 'On Track' : (row.status || 'On Track'),
   }
 }
 
@@ -54,7 +49,11 @@ export default function Students() {
       try {
         const res = await api.get('/students/?supervisor=me')
         const data = res.data?.results || res.data || []
-        if (Array.isArray(data) && data.length > 0) setStudents(data.map(normalizeStudent))
+        if (Array.isArray(data) && data.length > 0) {
+          const apiStudents = data.map(normalizeStudent)
+          const mockWithoutReal = mockStudents.filter(m => !apiStudents.find(a => a.matricule === m.matricule))
+          setStudents([...apiStudents, ...mockWithoutReal])
+        }
       } catch (err) {
         console.log('Using mock data:', err)
       } finally {
