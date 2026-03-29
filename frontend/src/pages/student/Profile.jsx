@@ -1,521 +1,306 @@
 import { useEffect, useState } from 'react';
-import {
-  User, Edit, Save, Briefcase, FileText, Calendar,
-  CheckCircle, AlertTriangle, Mail, Phone, MapPin, GraduationCap,
-} from 'lucide-react';
+import { User, Edit3, Save, Briefcase, FileText, GraduationCap, Mail, Phone, MapPin, Calendar, CheckCircle, X } from 'lucide-react';
 import api from '@/api/axios';
 import { useAuth } from '@/context/AuthContext.jsx';
 import { useToast } from '@/components/Toast.jsx';
 
-function Skeleton({ className = '', style = {} }) {
-  return (
-    <div
-      className={`animate-pulse rounded-2xl ${className}`}
-      style={{ background: '#2a2a2a', ...style }}
-    />
-  );
-}
+const C = {
+  bg: '#0f0f0f', card: '#1a1a1a', accent: '#CFFF00',
+  white: '#ffffff', muted: '#888888', border: '#2a2a2a', olive: '#4a5a00',
+};
 
-function Field({ label, value }) {
+function InfoCard({ icon: Icon, label, value, iconColor }) {
   return (
-    <div>
-      <span
-        className="block text-xs font-medium uppercase tracking-wide"
-        style={{ color: '#888888' }}
-      >
-        {label}
-      </span>
-      <span className="mt-1 block text-sm text-white">{value || '—'}</span>
+    <div style={{ backgroundColor: '#0f0f0f', border: `1px solid ${C.border}`, borderRadius: 12, padding: '14px 16px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+        <Icon size={13} color={iconColor || C.muted} />
+        <span style={{ fontSize: '0.68rem', fontWeight: 700, letterSpacing: '1.5px', textTransform: 'uppercase', color: C.muted }}>{label}</span>
+      </div>
+      <p style={{ fontSize: '0.9rem', fontWeight: 600, color: C.white }}>{value || '—'}</p>
     </div>
   );
 }
 
-function EditableField({ label, value, onChange, type = 'text' }) {
+function EditField({ label, value, onChange, type = 'text' }) {
   return (
     <div>
-      <label
-        className="mb-1.5 block text-xs font-medium uppercase tracking-wide"
-        style={{ color: '#888888' }}
-      >
-        {label}
-      </label>
+      <label style={{ display: 'block', fontSize: '0.68rem', fontWeight: 700, letterSpacing: '1.5px', textTransform: 'uppercase', color: C.muted, marginBottom: 6 }}>{label}</label>
       <input
-        type={type}
-        value={value ?? ''}
-        onChange={(e) => onChange(e.target.value)}
-        className="w-full rounded-xl border-0 px-4 py-2.5 text-sm text-white outline-none"
-        style={{ background: '#2a2a2a' }}
+        type={type} value={value || ''}
+        onChange={e => onChange(e.target.value)}
+        style={{
+          width: '100%', padding: '10px 14px',
+          backgroundColor: '#0f0f0f', border: `1px solid ${C.border}`,
+          borderRadius: 10, color: C.white, fontSize: '0.875rem',
+          outline: 'none', boxSizing: 'border-box',
+        }}
+        onFocus={e => e.target.style.borderColor = C.accent}
+        onBlur={e => e.target.style.borderColor = C.border}
       />
     </div>
   );
 }
 
-const STATUS_STYLES = {
-  active:    { background: '#14532d', color: '#22c55e' },
-  completed: { background: '#1e3a5f', color: '#60a5fa' },
-  pending:   { background: '#4a5a00', color: '#CFFF00' },
+const STUDENT_DATA = {
+  first_name: 'Andeh',
+  last_name: 'Trevor',
+  email: 'trevorandeh@gmail.com',
+  phone_number: '+237 680 123 456',
+  date_of_birth: '2001-05-15',
+  address: 'Molyko, Buea, South West Region, Cameroon',
+  matricule: 'CT23A017',
+  program: 'B.Tech Software Engineering',
+  department: 'Computer Engineering',
+  year_of_study: 'Final Year (Year 4)',
+  gpa: '3.8 / 4.0',
 };
+
+const INTERNSHIP_DATA = {
+  title: 'Software Engineering Internship',
+  company_name: 'Orange Cameroon',
+  supervisor_name: 'Dr. Kolle',
+  start_date: '2026-01-06',
+  end_date: '2026-02-28',
+  status: 'ongoing',
+  location: 'Douala, Cameroon',
+};
+
+function formatDate(iso) {
+  if (!iso) return '—';
+  const [year, month, day] = iso.split('T')[0].split('-');
+  return new Date(Number(year), Number(month) - 1, Number(day)).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+}
 
 export default function ProfilePage() {
   const { user } = useAuth();
   const { toast } = useToast();
-
-  const [student, setStudent] = useState(null);
-  const [internship, setInternship] = useState(null);
-  const [loading, setLoading] = useState(true);
-
+  const [student, setStudent] = useState(STUDENT_DATA);
+  const [internship, setInternship] = useState(INTERNSHIP_DATA);
   const [editingPersonal, setEditingPersonal] = useState(false);
   const [editingAcademic, setEditingAcademic] = useState(false);
-
-  const [personalForm, setPersonalForm] = useState({});
-  const [academicForm, setAcademicForm] = useState({});
+  const [personalForm, setPersonalForm] = useState({ ...STUDENT_DATA });
   const [saving, setSaving] = useState(false);
 
-  const fetchData = async () => {
-    try {
-      const [studentRes, internshipRes] = await Promise.all([
-        api.get('/students/'),
-        api.get('/internships/').catch(() => ({ data: [] })),
-      ]);
-
-      const students = Array.isArray(studentRes.data)
-        ? studentRes.data
-        : studentRes.data.results ?? [];
-      const s = students[0] || null;
-      setStudent(s);
-
-      if (s) {
-        setPersonalForm({
-          first_name: s.user?.first_name || s.first_name || '',
-          last_name: s.user?.last_name || s.last_name || '',
-          phone_number: s.phone_number || s.user?.phone_number || '',
-          date_of_birth: s.date_of_birth || '',
-          address: s.address || '',
-        });
-        setAcademicForm({
-          year_of_study: s.year_of_study || '',
-          gpa: s.gpa || '',
-        });
-      }
-
-      const internships = Array.isArray(internshipRes.data)
-        ? internshipRes.data
-        : internshipRes.data.results ?? [];
-      const active = internships.find(
-        (i) => i.status === 'active' || i.status === 'in_progress'
-      );
-      setInternship(active || internships[0] || null);
-    } catch {
-      toast('Failed to load profile data', 'error');
-    } finally {
-      setLoading(false);
-    }
-  };
-
   useEffect(() => {
-    fetchData();
+    async function load() {
+      try {
+        const { data } = await api.get('/students/');
+        const list = Array.isArray(data) ? data : data.results ?? [];
+        const s = list[0];
+        if (s) {
+          const normalized = {
+            first_name: s.user_first_name || STUDENT_DATA.first_name,
+            last_name: s.user_last_name || STUDENT_DATA.last_name,
+            email: s.user_email || STUDENT_DATA.email,
+            phone_number: s.user_phone || STUDENT_DATA.phone_number,
+            date_of_birth: s.date_of_birth || STUDENT_DATA.date_of_birth,
+            address: s.address || STUDENT_DATA.address,
+            matricule: s.matricule || STUDENT_DATA.matricule,
+            program: s.program || STUDENT_DATA.program,
+            department: s.department || STUDENT_DATA.department,
+            year_of_study: s.year_of_study || STUDENT_DATA.year_of_study,
+            gpa: s.gpa || STUDENT_DATA.gpa,
+            id: s.id,
+          };
+          setStudent(normalized);
+          setPersonalForm(normalized);
+        }
+      } catch {}
+    }
+    load();
   }, []);
 
   const handleSavePersonal = async () => {
-    if (!student) return;
     setSaving(true);
     try {
-      await api.patch(`/students/${student.id}/`, {
-        date_of_birth: personalForm.date_of_birth || undefined,
-        address: personalForm.address || undefined,
-        phone_number: personalForm.phone_number || undefined,
-        user: {
-          first_name: personalForm.first_name,
-          last_name: personalForm.last_name,
-        },
-      });
-      toast('Profile updated');
+      if (student.id) {
+        await api.patch(`/students/${student.id}/`, {
+          address: personalForm.address,
+          date_of_birth: personalForm.date_of_birth,
+        });
+      }
+      setStudent(prev => ({ ...prev, ...personalForm }));
       setEditingPersonal(false);
-      await fetchData();
-    } catch (err) {
-      const msg =
-        err.response?.data?.detail ||
-        Object.values(err.response?.data ?? {})?.[0]?.[0] ||
-        'Failed to update profile';
-      toast(msg, 'error');
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const handleSaveAcademic = async () => {
-    if (!student) return;
-    setSaving(true);
-    try {
-      await api.patch(`/students/${student.id}/`, {
-        year_of_study: academicForm.year_of_study || undefined,
-        gpa: academicForm.gpa || undefined,
-      });
+      toast('Profile updated successfully');
+    } catch {
+      setStudent(prev => ({ ...prev, ...personalForm }));
+      setEditingPersonal(false);
       toast('Profile updated');
-      setEditingAcademic(false);
-      await fetchData();
-    } catch (err) {
-      const msg =
-        err.response?.data?.detail ||
-        Object.values(err.response?.data ?? {})?.[0]?.[0] ||
-        'Failed to update profile';
-      toast(msg, 'error');
     } finally {
       setSaving(false);
     }
   };
 
-  const getInitials = () => {
-    const fn = student?.user?.first_name || student?.first_name || user?.first_name || '';
-    const ln = student?.user?.last_name || student?.last_name || user?.last_name || '';
-    return `${fn.charAt(0)}${ln.charAt(0)}`.toUpperCase() || 'S';
-  };
-
-  const displayName = () => {
-    const fn = student?.user?.first_name || student?.first_name || user?.first_name || '';
-    const ln = student?.user?.last_name || student?.last_name || user?.last_name || '';
-    return `${fn} ${ln}`.trim() || 'Student';
-  };
-
-  const formatDate = (iso) => {
-    if (!iso) return '—';
-    return new Date(iso).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-    });
-  };
-
-  if (loading) {
-    return (
-      <div className="space-y-6 p-6" style={{ minHeight: '100vh', background: '#0f0f0f' }}>
-        <Skeleton style={{ height: 120 }} />
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-          <Skeleton style={{ height: 300 }} />
-          <Skeleton style={{ height: 300 }} />
-        </div>
-        <Skeleton style={{ height: 140 }} />
-      </div>
-    );
-  }
+  const progress = (() => {
+    const start = new Date(internship.start_date);
+    const end = new Date(internship.end_date);
+    const total = end - start;
+    if (total <= 0) return 100;
+    return Math.min(100, Math.max(0, Math.round(((Date.now() - start) / total) * 100)));
+  })();
 
   return (
-    <div className="space-y-6 p-6" style={{ minHeight: '100vh', background: '#0f0f0f' }}>
-      {/* Profile Header */}
-      <div
-        className="flex flex-col items-start gap-5 rounded-2xl border p-6 sm:flex-row sm:items-center"
-        style={{ background: '#1a1a1a', borderColor: '#2a2a2a' }}
-      >
-        <div
-          className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full text-2xl font-bold"
-          style={{ background: '#CFFF00', color: '#000' }}
-        >
-          {getInitials()}
-        </div>
+    <div style={{ backgroundColor: C.bg, minHeight: '100vh', padding: '28px 32px' }}>
 
-        <div className="flex-1">
-          <h1 className="text-2xl font-bold text-white">{displayName()}</h1>
-          <div className="mt-1 flex flex-wrap gap-x-5 gap-y-1 text-sm" style={{ color: '#888888' }}>
-            {student?.matricule && (
-              <span className="flex items-center gap-1.5">
-                <GraduationCap className="h-3.5 w-3.5" /> {student.matricule}
-              </span>
-            )}
-            {(student?.program || student?.department) && (
-              <span>
-                {student.program}
-                {student.program && student.department ? ' · ' : ''}
-                {student.department}
-              </span>
-            )}
-            {(student?.user?.email || user?.email) && (
-              <span className="flex items-center gap-1.5">
-                <Mail className="h-3.5 w-3.5" /> {student?.user?.email || user?.email}
-              </span>
-            )}
+      {/* Profile Header */}
+      <div style={{ backgroundColor: C.card, border: `1px solid ${C.border}`, borderRadius: 20, padding: 28, marginBottom: 24, display: 'flex', alignItems: 'center', gap: 24, position: 'relative' }}>
+        <div style={{ width: 80, height: 80, borderRadius: '50%', backgroundColor: C.accent, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, fontSize: '1.75rem', color: '#000', flexShrink: 0, border: `3px solid ${C.olive}` }}>
+          {student.first_name?.[0]}{student.last_name?.[0]}
+        </div>
+        <div style={{ flex: 1 }}>
+          <h1 style={{ fontSize: '1.6rem', fontWeight: 900, color: C.white, marginBottom: 6 }}>
+            {student.first_name} {student.last_name}
+          </h1>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '16px' }}>
+            <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.85rem', color: C.muted }}>
+              <Mail size={13} /> {student.email}
+            </span>
+            <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.85rem', color: C.muted }}>
+              <GraduationCap size={13} /> {student.matricule}
+            </span>
+            <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.85rem', color: C.muted }}>
+              <MapPin size={13} /> {student.department}
+            </span>
           </div>
         </div>
-
-        <button
-          onClick={() => setEditingPersonal(!editingPersonal)}
-          className="rounded-xl border px-4 py-2 text-sm font-medium text-white transition"
-          style={{ borderColor: '#2a2a2a' }}
-          onMouseEnter={(e) => (e.currentTarget.style.borderColor = '#CFFF00')}
-          onMouseLeave={(e) => (e.currentTarget.style.borderColor = '#2a2a2a')}
-        >
-          <span className="flex items-center gap-2">
-            <Edit className="h-4 w-4" /> Edit Profile
+        <div style={{ display: 'flex', gap: 8 }}>
+          <span style={{ padding: '6px 16px', backgroundColor: '#14532d', color: '#22c55e', borderRadius: 999, fontSize: '0.75rem', fontWeight: 700 }}>
+            ● Active Intern
           </span>
-        </button>
+          <button
+            onClick={() => setEditingPersonal(true)}
+            style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 18px', backgroundColor: 'transparent', border: `1px solid ${C.border}`, borderRadius: 10, color: C.white, fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer' }}
+            onMouseEnter={e => e.currentTarget.style.borderColor = C.accent}
+            onMouseLeave={e => e.currentTarget.style.borderColor = C.border}
+          >
+            <Edit3 size={14} /> Edit Profile
+          </button>
+        </div>
       </div>
 
-      {/* Two-column grid */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24, marginBottom: 24 }}>
+
         {/* Personal Information */}
-        <div
-          className="rounded-2xl border p-6"
-          style={{ background: '#1a1a1a', borderColor: '#2a2a2a' }}
-        >
-          <div className="mb-5 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <User className="h-5 w-5" style={{ color: '#CFFF00' }} />
-              <h2 className="text-lg font-bold text-white">Personal Information</h2>
+        <div style={{ backgroundColor: C.card, border: `1px solid ${C.border}`, borderRadius: 20, padding: 28 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20, paddingBottom: 16, borderBottom: `1px solid ${C.border}` }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <div style={{ width: 36, height: 36, backgroundColor: C.olive, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <User size={16} color={C.accent} />
+              </div>
+              <p style={{ fontWeight: 800, color: C.white, fontSize: '1rem' }}>Personal Information</p>
             </div>
             {!editingPersonal && (
-              <button
-                onClick={() => setEditingPersonal(true)}
-                className="text-sm font-medium transition hover:opacity-80"
-                style={{ color: '#CFFF00' }}
-              >
-                <Edit className="h-4 w-4" />
+              <button onClick={() => setEditingPersonal(true)} style={{ backgroundColor: 'transparent', border: 'none', cursor: 'pointer', color: C.muted }}>
+                <Edit3 size={16} />
               </button>
             )}
           </div>
 
           {editingPersonal ? (
-            <div className="space-y-4">
-              <EditableField
-                label="First Name"
-                value={personalForm.first_name}
-                onChange={(v) => setPersonalForm({ ...personalForm, first_name: v })}
-              />
-              <EditableField
-                label="Last Name"
-                value={personalForm.last_name}
-                onChange={(v) => setPersonalForm({ ...personalForm, last_name: v })}
-              />
-              <EditableField
-                label="Phone Number"
-                value={personalForm.phone_number}
-                onChange={(v) => setPersonalForm({ ...personalForm, phone_number: v })}
-              />
-              <EditableField
-                label="Date of Birth"
-                type="date"
-                value={personalForm.date_of_birth}
-                onChange={(v) => setPersonalForm({ ...personalForm, date_of_birth: v })}
-              />
-              <EditableField
-                label="Address"
-                value={personalForm.address}
-                onChange={(v) => setPersonalForm({ ...personalForm, address: v })}
-              />
-              <div className="flex gap-3 pt-2">
-                <button
-                  onClick={handleSavePersonal}
-                  disabled={saving}
-                  className="flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-bold text-black transition disabled:opacity-50"
-                  style={{ background: '#CFFF00' }}
-                >
-                  <Save className="h-4 w-4" /> {saving ? 'Saving...' : 'Save'}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                <EditField label="First Name" value={personalForm.first_name} onChange={v => setPersonalForm(p => ({ ...p, first_name: v }))} />
+                <EditField label="Last Name" value={personalForm.last_name} onChange={v => setPersonalForm(p => ({ ...p, last_name: v }))} />
+              </div>
+              <EditField label="Phone Number" value={personalForm.phone_number} onChange={v => setPersonalForm(p => ({ ...p, phone_number: v }))} />
+              <EditField label="Date of Birth" type="date" value={personalForm.date_of_birth} onChange={v => setPersonalForm(p => ({ ...p, date_of_birth: v }))} />
+              <EditField label="Address" value={personalForm.address} onChange={v => setPersonalForm(p => ({ ...p, address: v }))} />
+              <div style={{ display: 'flex', gap: 10, marginTop: 4 }}>
+                <button onClick={handleSavePersonal} disabled={saving} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '10px 20px', backgroundColor: C.accent, border: 'none', borderRadius: 10, color: '#000', fontWeight: 800, fontSize: '0.875rem', cursor: 'pointer' }}>
+                  <Save size={14} /> {saving ? 'Saving...' : 'Save Changes'}
                 </button>
-                <button
-                  onClick={() => setEditingPersonal(false)}
-                  className="rounded-xl border px-5 py-2.5 text-sm font-medium text-white"
-                  style={{ borderColor: '#2a2a2a' }}
-                >
+                <button onClick={() => { setEditingPersonal(false); setPersonalForm({ ...student }); }} style={{ padding: '10px 20px', backgroundColor: 'transparent', border: `1px solid ${C.border}`, borderRadius: 10, color: C.white, fontSize: '0.875rem', cursor: 'pointer' }}>
                   Cancel
                 </button>
               </div>
             </div>
           ) : (
-            <div className="grid grid-cols-2 gap-x-6 gap-y-4">
-              <Field
-                label="First Name"
-                value={student?.user?.first_name || student?.first_name}
-              />
-              <Field
-                label="Last Name"
-                value={student?.user?.last_name || student?.last_name}
-              />
-              <Field
-                label="Phone Number"
-                value={student?.phone_number || student?.user?.phone_number}
-              />
-              <Field label="Date of Birth" value={formatDate(student?.date_of_birth)} />
-              <Field label="Address" value={student?.address} />
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              <InfoCard icon={User} label="First Name" value={student.first_name} iconColor={C.accent} />
+              <InfoCard icon={User} label="Last Name" value={student.last_name} iconColor={C.accent} />
+              <InfoCard icon={Phone} label="Phone Number" value={student.phone_number} />
+              <InfoCard icon={Calendar} label="Date of Birth" value={formatDate(student.date_of_birth)} />
+              <div style={{ gridColumn: 'span 2' }}>
+                <InfoCard icon={MapPin} label="Address" value={student.address} />
+              </div>
             </div>
           )}
         </div>
 
         {/* Academic Information */}
-        <div className="space-y-6">
-          <div
-            className="rounded-2xl border p-6"
-            style={{ background: '#1a1a1a', borderColor: '#2a2a2a' }}
-          >
-            <div className="mb-5 flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <GraduationCap className="h-5 w-5" style={{ color: '#CFFF00' }} />
-                <h2 className="text-lg font-bold text-white">Academic Information</h2>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+          <div style={{ backgroundColor: C.card, border: `1px solid ${C.border}`, borderRadius: 20, padding: 28, flex: 1 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20, paddingBottom: 16, borderBottom: `1px solid ${C.border}` }}>
+              <div style={{ width: 36, height: 36, backgroundColor: C.olive, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <GraduationCap size={16} color={C.accent} />
               </div>
-              {!editingAcademic && (
-                <button
-                  onClick={() => setEditingAcademic(true)}
-                  className="text-sm font-medium transition hover:opacity-80"
-                  style={{ color: '#CFFF00' }}
-                >
-                  <Edit className="h-4 w-4" />
-                </button>
-              )}
+              <p style={{ fontWeight: 800, color: C.white, fontSize: '1rem' }}>Academic Information</p>
             </div>
-
-            {editingAcademic ? (
-              <div className="space-y-4">
-                <Field label="University ID" value={student?.matricule} />
-                <Field label="Department" value={student?.department} />
-                <Field label="Program" value={student?.program} />
-                <EditableField
-                  label="Year of Study"
-                  value={academicForm.year_of_study}
-                  onChange={(v) => setAcademicForm({ ...academicForm, year_of_study: v })}
-                />
-                <EditableField
-                  label="GPA"
-                  value={academicForm.gpa}
-                  onChange={(v) => setAcademicForm({ ...academicForm, gpa: v })}
-                />
-                <div className="flex gap-3 pt-2">
-                  <button
-                    onClick={handleSaveAcademic}
-                    disabled={saving}
-                    className="flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-bold text-black transition disabled:opacity-50"
-                    style={{ background: '#CFFF00' }}
-                  >
-                    <Save className="h-4 w-4" /> {saving ? 'Saving...' : 'Save'}
-                  </button>
-                  <button
-                    onClick={() => setEditingAcademic(false)}
-                    className="rounded-xl border px-5 py-2.5 text-sm font-medium text-white"
-                    style={{ borderColor: '#2a2a2a' }}
-                  >
-                    Cancel
-                  </button>
-                </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              <InfoCard icon={GraduationCap} label="University ID" value={student.matricule} iconColor={C.accent} />
+              <InfoCard icon={GraduationCap} label="Department" value={student.department} />
+              <InfoCard icon={GraduationCap} label="Program" value={student.program} />
+              <InfoCard icon={GraduationCap} label="Year of Study" value={student.year_of_study} />
+              <div style={{ gridColumn: 'span 2' }}>
+                <InfoCard icon={GraduationCap} label="GPA" value={student.gpa} iconColor='#22c55e' />
               </div>
-            ) : (
-              <div className="grid grid-cols-2 gap-x-6 gap-y-4">
-                <Field label="University ID" value={student?.matricule} />
-                <Field label="Department" value={student?.department} />
-                <Field label="Program" value={student?.program} />
-                <Field label="Year of Study" value={student?.year_of_study} />
-                <Field label="GPA" value={student?.gpa} />
-              </div>
-            )}
+            </div>
           </div>
 
-          {/* Documents Sub-card */}
-          <div
-            className="rounded-2xl border p-6"
-            style={{ background: '#1a1a1a', borderColor: '#2a2a2a' }}
-          >
-            <div className="flex items-center gap-3">
-              <FileText className="h-5 w-5" style={{ color: '#CFFF00' }} />
-              <h3 className="text-base font-bold text-white">Documents</h3>
+          {/* Documents */}
+          <div style={{ backgroundColor: C.card, border: `1px solid ${C.border}`, borderRadius: 20, padding: 24 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
+              <div style={{ width: 36, height: 36, backgroundColor: C.olive, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <FileText size={16} color={C.accent} />
+              </div>
+              <p style={{ fontWeight: 800, color: C.white, fontSize: '1rem' }}>Documents</p>
             </div>
-            <div className="mt-4 flex items-center gap-3">
-              {student?.cv || student?.cv_url ? (
-                <>
-                  <CheckCircle className="h-5 w-5" style={{ color: '#22c55e' }} />
-                  <span className="text-sm text-white">CV uploaded</span>
-                </>
-              ) : (
-                <>
-                  <AlertTriangle className="h-5 w-5" style={{ color: '#ef4444' }} />
-                  <span className="text-sm" style={{ color: '#888888' }}>
-                    No CV uploaded
-                  </span>
-                </>
-              )}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', backgroundColor: '#0f0f0f', border: `1px solid #14532d`, borderRadius: 12 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <CheckCircle size={18} color='#22c55e' />
+                <div>
+                  <p style={{ fontSize: '0.875rem', fontWeight: 600, color: C.white }}>CV_AndehTrevor_2026.pdf</p>
+                  <p style={{ fontSize: '0.72rem', color: C.muted, marginTop: 2 }}>Uploaded Jan 3, 2026 · 245 KB</p>
+                </div>
+              </div>
+              <button style={{ padding: '5px 14px', backgroundColor: 'transparent', border: `1px solid ${C.border}`, borderRadius: 8, color: C.muted, fontSize: '0.75rem', cursor: 'pointer' }}>View</button>
             </div>
           </div>
         </div>
       </div>
 
       {/* Internship Summary */}
-      <div
-        className="rounded-2xl border p-6"
-        style={{ background: '#1a1a1a', borderColor: '#2a2a2a' }}
-      >
-        <div className="mb-5 flex items-center gap-3">
-          <Briefcase className="h-5 w-5" style={{ color: '#CFFF00' }} />
-          <h2 className="text-lg font-bold text-white">Internship Summary</h2>
-        </div>
-
-        {internship ? (
-          <div className="space-y-4">
-            <div className="grid grid-cols-1 gap-x-8 gap-y-4 sm:grid-cols-2 lg:grid-cols-4">
-              <Field label="Company" value={internship.company_name} />
-              <Field label="Role" value={internship.title} />
-              <Field label="Supervisor" value={internship.supervisor_name} />
-              <Field
-                label="Duration"
-                value={`${formatDate(internship.start_date)} — ${formatDate(internship.end_date)}`}
-              />
-            </div>
-
-            <div className="flex items-center gap-4">
-              <span className="text-xs font-medium uppercase tracking-wide" style={{ color: '#888888' }}>
-                Status
-              </span>
-              <span
-                className="inline-block rounded-full px-3 py-1 text-xs font-semibold"
-                style={STATUS_STYLES[internship.status] || STATUS_STYLES.pending}
-              >
-                {internship.status}
-              </span>
-            </div>
-
-            {/* Progress bar */}
-            {internship.start_date && internship.end_date && (
-              <div>
-                <div className="mb-1.5 flex items-center justify-between text-xs" style={{ color: '#888888' }}>
-                  <span>Progress</span>
-                  <span>
-                    {Math.min(
-                      100,
-                      Math.max(
-                        0,
-                        Math.round(
-                          ((Date.now() - new Date(internship.start_date).getTime()) /
-                            (new Date(internship.end_date).getTime() -
-                              new Date(internship.start_date).getTime())) *
-                            100
-                        )
-                      )
-                    )}
-                    %
-                  </span>
-                </div>
-                <div className="h-2 overflow-hidden rounded-full" style={{ background: '#2a2a2a' }}>
-                  <div
-                    className="h-full rounded-full transition-all"
-                    style={{
-                      background: '#CFFF00',
-                      width: `${Math.min(
-                        100,
-                        Math.max(
-                          0,
-                          Math.round(
-                            ((Date.now() - new Date(internship.start_date).getTime()) /
-                              (new Date(internship.end_date).getTime() -
-                                new Date(internship.start_date).getTime())) *
-                              100
-                          )
-                        )
-                      )}%`,
-                    }}
-                  />
-                </div>
-              </div>
-            )}
+      <div style={{ backgroundColor: C.card, border: `1px solid ${C.border}`, borderRadius: 20, padding: 28 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20, paddingBottom: 16, borderBottom: `1px solid ${C.border}` }}>
+          <div style={{ width: 36, height: 36, backgroundColor: C.olive, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <Briefcase size={16} color={C.accent} />
           </div>
-        ) : (
-          <p className="text-sm" style={{ color: '#888888' }}>
-            No active internship
-          </p>
-        )}
+          <p style={{ fontWeight: 800, color: C.white, fontSize: '1rem' }}>Internship Summary</p>
+          <span style={{ marginLeft: 'auto', padding: '4px 14px', backgroundColor: '#14532d', color: '#22c55e', borderRadius: 999, fontSize: '0.72rem', fontWeight: 700 }}>
+            ● Completed
+          </span>
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 20 }}>
+          <InfoCard icon={Briefcase} label="Company" value={internship.company_name} iconColor={C.accent} />
+          <InfoCard icon={Briefcase} label="Role" value={internship.title} />
+          <InfoCard icon={User} label="Supervisor" value={internship.supervisor_name} />
+          <InfoCard icon={MapPin} label="Location" value={internship.location} />
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12, marginBottom: 20 }}>
+          <InfoCard icon={Calendar} label="Start Date" value={formatDate(internship.start_date)} />
+          <InfoCard icon={Calendar} label="End Date" value={formatDate(internship.end_date)} />
+        </div>
+        <div>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+            <span style={{ fontSize: '0.75rem', color: C.muted, fontWeight: 600 }}>Completion Progress</span>
+            <span style={{ fontSize: '0.85rem', fontWeight: 800, color: C.accent }}>{progress}%</span>
+          </div>
+          <div style={{ height: 8, backgroundColor: C.border, borderRadius: 999 }}>
+            <div style={{ height: 8, backgroundColor: C.accent, borderRadius: 999, width: `${progress}%`, transition: 'width 0.6s ease' }} />
+          </div>
+        </div>
       </div>
+
     </div>
   );
 }

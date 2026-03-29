@@ -51,7 +51,7 @@ export default function StudentLayout() {
         style={{ backgroundColor: '#1a1a1a', borderRight: '1px solid #2a2a2a' }}
       >
         {/* Brand */}
-        <div className="px-6 pt-6 pb-4">
+        <div style={{ padding: '20px 24px 12px' }}>
           <div className="flex items-center gap-2">
             <GraduationCap size={28} style={{ color: '#CFFF00' }} />
             <span className="text-xl font-bold tracking-tight">IMS</span>
@@ -62,21 +62,37 @@ export default function StudentLayout() {
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 px-3 space-y-1 overflow-y-auto">
+        <nav style={{ flex: 1, padding: '0 12px', overflowY: 'auto' }}>
           {navItems.map(({ to, label, icon: Icon }) => (
             <NavLink
               key={to}
               to={to}
-              className={({ isActive }) =>
-                `flex items-center gap-3 px-4 py-2.5 text-sm font-medium rounded-xl transition-colors ${
-                  isActive ? 'text-black' : 'hover:bg-white/5'
-                }`
-              }
-              style={({ isActive }) =>
-                isActive
-                  ? { backgroundColor: '#CFFF00', color: '#000000' }
-                  : { color: '#ffffff' }
-              }
+              style={({ isActive }) => ({
+                display: 'flex',
+                alignItems: 'center',
+                gap: 12,
+                padding: '10px 16px',
+                borderRadius: 12,
+                marginBottom: 2,
+                fontSize: '0.875rem',
+                fontWeight: 600,
+                textDecoration: 'none',
+                transition: 'all 0.15s',
+                backgroundColor: isActive ? '#CFFF00' : 'transparent',
+                color: isActive ? '#000000' : '#888888',
+              })}
+              onMouseEnter={(e) => {
+                if (!e.currentTarget.style.backgroundColor.includes('207')) {
+                  e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.05)'
+                  e.currentTarget.style.color = '#ffffff'
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (!e.currentTarget.style.backgroundColor.includes('207')) {
+                  e.currentTarget.style.backgroundColor = 'transparent'
+                  e.currentTarget.style.color = '#888888'
+                }
+              }}
             >
               <Icon size={18} />
               {label}
@@ -85,8 +101,8 @@ export default function StudentLayout() {
         </nav>
 
         {/* User section */}
-        <div className="px-4 pb-4 mt-auto" style={{ borderTop: '1px solid #2a2a2a' }}>
-          <div className="flex items-center gap-3 py-4">
+        <div style={{ padding: '0 16px 16px', marginTop: 'auto', borderTop: '1px solid #2a2a2a' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 0' }}>
             <div
               className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold shrink-0"
               style={{ backgroundColor: '#CFFF00', color: '#000000' }}
@@ -102,8 +118,16 @@ export default function StudentLayout() {
           </div>
           <button
             onClick={logout}
-            className="flex items-center gap-2 w-full px-3 py-2 text-sm rounded-xl transition-colors hover:bg-white/5"
-            style={{ color: '#888888' }}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 8,
+              width: '100%', padding: '8px 12px',
+              backgroundColor: 'transparent', border: 'none',
+              borderRadius: 10, color: '#888888',
+              fontSize: '0.875rem', cursor: 'pointer',
+              transition: 'all 0.15s',
+            }}
+            onMouseEnter={e => { e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.05)'; e.currentTarget.style.color = '#ffffff' }}
+            onMouseLeave={e => { e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.color = '#888888' }}
           >
             <LogOut size={16} />
             Log Out
@@ -112,38 +136,49 @@ export default function StudentLayout() {
       </aside>
 
       {/* Main content */}
-      <div className="flex-1 ml-64 flex flex-col min-h-screen">
+      <div style={{ marginLeft: '256px', flex: 1, display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
         {/* Top bar */}
-        <header
-          className="sticky top-0 z-20 flex items-center justify-between px-8 py-4"
-          style={{ backgroundColor: '#0f0f0f', borderBottom: '1px solid #2a2a2a' }}
-        >
-          <h1 className="text-xl font-semibold">{getPageTitle(location.pathname)}</h1>
-
-          <div className="flex items-center gap-4">
-            <div className="relative">
-              <Search
-                size={16}
-                className="absolute left-3 top-1/2 -translate-y-1/2"
-                style={{ color: '#888888' }}
-              />
+        <header style={{
+          position: 'sticky', top: 0, zIndex: 20,
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          padding: '14px 32px',
+          backgroundColor: '#0f0f0f',
+          borderBottom: '1px solid #2a2a2a',
+        }}>
+          <h1 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#ffffff', margin: 0 }}>
+            {getPageTitle(location.pathname)}
+          </h1>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div style={{ position: 'relative' }}>
+              <Search size={15} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#888888' }} />
               <input
                 type="text"
-                placeholder="Search..."
+                placeholder="Search internships..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="pl-9 pr-4 py-2 text-sm rounded-xl outline-none w-60 placeholder:text-[#888888]"
-                style={{ backgroundColor: '#2a2a2a', color: '#ffffff', border: 'none' }}
+                style={{
+                  paddingLeft: 36, paddingRight: 16, paddingTop: 9, paddingBottom: 9,
+                  backgroundColor: '#1a1a1a', border: '1px solid #2a2a2a',
+                  borderRadius: 10, color: '#ffffff', fontSize: '0.875rem',
+                  outline: 'none', width: 280,
+                }}
+                onFocus={e => e.target.style.borderColor = '#CFFF00'}
+                onBlur={e => e.target.style.borderColor = '#2a2a2a'}
               />
             </div>
-            <button className="relative p-2 rounded-xl hover:bg-white/5 transition-colors">
-              <Bell size={18} style={{ color: '#888888' }} />
+            <button style={{
+              width: 38, height: 38, borderRadius: 10,
+              backgroundColor: '#1a1a1a', border: '1px solid #2a2a2a',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              cursor: 'pointer',
+            }}>
+              <Bell size={17} style={{ color: '#888888' }} />
             </button>
           </div>
         </header>
 
         {/* Page content */}
-        <main className="flex-1 overflow-y-auto p-8">
+        <main className="flex-1 overflow-y-auto">
           <Outlet />
         </main>
       </div>
