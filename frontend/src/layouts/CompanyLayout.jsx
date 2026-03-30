@@ -33,9 +33,24 @@ function extractCount(data) {
 export default function CompanyLayout() {
   const { user, logout } = useAuth()
   const [applicantCount, setApplicantCount] = useState(0)
-  const [slots, setSlots] = useState({ remaining: 3, total: 10 })
 
-  const companyName = user?.company_name || user?.companyName || 'Company'
+  const [companyName, setCompanyName] = useState(
+    user?.company_name || user?.companyName || 'Company'
+  )
+
+  useEffect(() => {
+    async function loadCompany() {
+      try {
+        const { data } = await api.get('/companies/')
+        const list = Array.isArray(data) ? data : data.results ?? []
+        if (list.length > 0 && list[0].name) {
+          const name = list[0].name
+          setCompanyName(name.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' '))
+        }
+      } catch {}
+    }
+    loadCompany()
+  }, [])
 
   useEffect(() => {
     let cancelled = false
@@ -46,32 +61,12 @@ export default function CompanyLayout() {
       } catch {
         if (!cancelled) setApplicantCount(0)
       }
-      try {
-        const { data } = await api.get('/internships/?company=me')
-        const list = Array.isArray(data) ? data : data?.results || []
-        let total = 0
-        let filled = 0
-        list.forEach((i) => {
-          const t = i.total_slots ?? i.slots_total ?? i.max_interns ?? 10
-          const f = i.filled_slots ?? i.filled ?? 0
-          total += t || 10
-          filled += f
-        })
-        if (!cancelled && total > 0) {
-          setSlots({ total, remaining: Math.max(0, total - filled) })
-        }
-      } catch {
-        /* keep defaults */
-      }
     }
     load()
     return () => {
       cancelled = true
     }
   }, [])
-
-  const slotsPercent =
-    slots.total > 0 ? Math.min(100, (slots.remaining / slots.total) * 100) : 30
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: '#0f0f0f', color: '#ffffff' }}>
@@ -124,7 +119,7 @@ export default function CompanyLayout() {
           style={{
             flex: 1,
             minHeight: 0,
-            padding: '16px 12px',
+            padding: '12px 12px',
             display: 'flex',
             flexDirection: 'column',
             gap: '4px',
@@ -174,62 +169,8 @@ export default function CompanyLayout() {
           ))}
         </nav>
 
-        {/* Bottom — Quick Stats + Log Out */}
-        <div style={{ padding: '16px 12px', borderTop: '1px solid #2a2a2a' }}>
-          <div
-            style={{
-              backgroundColor: '#1a1a1a',
-              border: '1px solid #2a2a2a',
-              borderRadius: '12px',
-              padding: '16px',
-              marginBottom: '12px',
-            }}
-          >
-            <p
-              style={{
-                fontSize: '0.7rem',
-                fontWeight: '700',
-                color: '#888888',
-                letterSpacing: '0.1em',
-                textTransform: 'uppercase',
-                marginBottom: '10px',
-                marginTop: 0,
-              }}
-            >
-              QUICK STATS
-            </p>
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                marginBottom: '8px',
-              }}
-            >
-              <p style={{ fontSize: '0.813rem', color: '#ffffff', margin: 0 }}>Remaining slots</p>
-              <p style={{ fontSize: '0.813rem', fontWeight: '700', color: '#CFFF00', margin: 0 }}>
-                {slots.remaining}/{slots.total}
-              </p>
-            </div>
-            <div
-              style={{
-                width: '100%',
-                height: '4px',
-                backgroundColor: '#2a2a2a',
-                borderRadius: '999px',
-              }}
-            >
-              <div
-                style={{
-                  height: '4px',
-                  backgroundColor: '#CFFF00',
-                  borderRadius: '999px',
-                  width: `${slotsPercent}%`,
-                }}
-              />
-            </div>
-          </div>
-
+        {/* Bottom — Log Out */}
+        <div style={{ marginTop: 'auto', padding: '20px 12px', borderTop: '1px solid #2a2a2a' }}>
           <button
             type="button"
             onClick={logout}

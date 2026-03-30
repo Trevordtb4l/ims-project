@@ -13,6 +13,7 @@ import StudentDashboard from '@/pages/student/Dashboard.jsx'
 import StudentApplications from '@/pages/student/Applications.jsx'
 import StudentLogbook from '@/pages/student/Logbook.jsx'
 import StudentProfile from '@/pages/student/Profile.jsx'
+import StudentMessages from './pages/student/Messages'
 
 import SupervisorLayout from '@/layouts/SupervisorLayout.jsx'
 import SupervisorDashboard from '@/pages/supervisor/Dashboard.jsx'
@@ -22,6 +23,7 @@ import SupervisorReports from '@/pages/supervisor/Reports.jsx'
 import StudentDetail from '@/pages/supervisor/StudentDetail.jsx'
 import ApprovalDetail from '@/pages/supervisor/ApprovalDetail.jsx'
 import ReportDetail from '@/pages/supervisor/ReportDetail.jsx'
+import SupervisorMessages from './pages/supervisor/Messages'
 
 import CompanyLayout from '@/layouts/CompanyLayout.jsx'
 import CompanyDashboard from '@/pages/company/Dashboard.jsx'
@@ -67,6 +69,7 @@ export default function App() {
                 <Route path="applications" element={<StudentApplications />} />
                 <Route path="logbook" element={<StudentLogbook />} />
                 <Route path="profile" element={<StudentProfile />} />
+                <Route path="messages" element={<StudentMessages />} />
               </Route>
             </Route>
 
@@ -81,6 +84,7 @@ export default function App() {
                 <Route path="approvals/:approvalId" element={<ApprovalDetail />} />
                 <Route path="reports" element={<SupervisorReports />} />
                 <Route path="reports/:reportId" element={<ReportDetail />} />
+                <Route path="messages" element={<SupervisorMessages />} />
               </Route>
             </Route>
 

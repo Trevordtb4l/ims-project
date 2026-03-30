@@ -10,6 +10,7 @@ import {
   Bell,
   LogOut,
   Search,
+  MessageSquare,
 } from 'lucide-react'
 
 const navItems = [
@@ -17,6 +18,7 @@ const navItems = [
   { to: '/student/applications', label: 'Applications', icon: FileText },
   { to: '/student/logbook', label: 'Logbook', icon: BookOpen },
   { to: '/student/profile', label: 'Profile', icon: User },
+  { to: '/student/messages', label: 'Messages', icon: MessageSquare },
 ]
 
 function getInitials(user) {

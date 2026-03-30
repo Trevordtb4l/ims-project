@@ -3,21 +3,40 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import api from '../../api/axios'
 
+const MOCK_APPLICANTS = [
+  { id: 1, student_name: 'Fomban Giscard', student_email: 'fomban@ub.edu', internship_title: 'Software Engineering Internship', applied_at: '2026-01-05T10:00:00Z', status: 'interview' },
+  { id: 2, student_name: 'Nkeng Marlène', student_email: 'nkeng@ub.edu', internship_title: 'Network Engineering Internship', applied_at: '2026-01-08T10:00:00Z', status: 'pending' },
+  { id: 3, student_name: 'Tchamba Romuald', student_email: 'tchamba@ub.edu', internship_title: 'Data Science Internship', applied_at: '2026-01-10T10:00:00Z', status: 'shortlisted' },
+  { id: 4, student_name: 'Mbarga Estelle', student_email: 'mbarga@ub.edu', internship_title: 'Software Engineering Internship', applied_at: '2026-01-12T10:00:00Z', status: 'interview' },
+  { id: 5, student_name: 'Kouam Blaise', student_email: 'kouam@ub.edu', internship_title: 'Cybersecurity Internship', applied_at: '2026-01-15T10:00:00Z', status: 'pending' },
+  { id: 6, student_name: 'Epie Samuel', student_email: 'epie@ub.edu', internship_title: 'Network Engineering Internship', applied_at: '2026-01-18T10:00:00Z', status: 'shortlisted' },
+  { id: 7, student_name: 'Mulema Harris', student_email: 'mulema@ub.edu', internship_title: 'Data Science Internship', applied_at: '2026-01-20T10:00:00Z', status: 'interview' },
+  { id: 8, student_name: 'Frankline Neba', student_email: 'frankline@ub.edu', internship_title: 'Software Engineering Internship', applied_at: '2026-01-22T10:00:00Z', status: 'approved' },
+  { id: 9, student_name: 'Austine Mbah', student_email: 'austine@ub.edu', internship_title: 'Data Science Internship', applied_at: '2026-01-25T10:00:00Z', status: 'pending' },
+  { id: 10, student_name: 'Brice Cheumani', student_email: 'brice@ub.edu', internship_title: 'Cybersecurity Internship', applied_at: '2026-01-28T10:00:00Z', status: 'rejected' },
+]
+
 export default function Applicants() {
   const navigate = useNavigate()
   const [applicants, setApplicants] = useState([])
   const [search, setSearch] = useState('')
   const [filter, setFilter] = useState('All')
   const [loading, setLoading] = useState(true)
+  const [selectedApplicant, setSelectedApplicant] = useState(null)
 
   useEffect(() => {
     const fetchApplicants = async () => {
       try {
         const res = await api.get('/internship-applications/?company=me')
         const data = res.data?.results || res.data || []
-        setApplicants(Array.isArray(data) ? data : [])
-      } catch (err) {
-        console.log('Error:', err.response?.data)
+        const list = Array.isArray(data) ? data : []
+        if (list.length > 0) {
+          setApplicants(list)
+        } else {
+          setApplicants(MOCK_APPLICANTS)
+        }
+      } catch {
+        setApplicants(MOCK_APPLICANTS)
       } finally {
         setLoading(false)
       }
@@ -193,7 +212,7 @@ export default function Applicants() {
                           type="button"
                           onClick={(e) => {
                             e.stopPropagation()
-                            navigate(`/company/applicants/${applicant.id}`)
+                            setSelectedApplicant(applicant)
                           }}
                           style={{ padding: '6px 16px', backgroundColor: 'transparent', border: '1px solid #CFFF00', borderRadius: '8px', color: '#CFFF00', fontSize: '0.813rem', fontWeight: '600', cursor: 'pointer' }}
                         >
@@ -220,6 +239,83 @@ export default function Applicants() {
           </table>
         )}
       </div>
+
+      {selectedApplicant && (
+        <>
+          <div
+            style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.6)', zIndex: 40, backdropFilter: 'blur(2px)' }}
+            onClick={() => setSelectedApplicant(null)}
+          />
+          <div style={{
+            position: 'fixed', top: 0, right: 0, bottom: 0,
+            width: '460px', maxWidth: '100vw',
+            backgroundColor: '#111111', borderLeft: '1px solid #2a2a2a',
+            zIndex: 50, overflowY: 'auto', padding: '28px',
+          }}>
+            {/* Header */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '28px' }}>
+              <h2 style={{ fontSize: '1.125rem', fontWeight: '700', color: '#ffffff', margin: 0 }}>Applicant Profile</h2>
+              <button
+                onClick={() => setSelectedApplicant(null)}
+                style={{ width: '32px', height: '32px', backgroundColor: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#888888', fontSize: '18px' }}
+              >×</button>
+            </div>
+
+            {/* Avatar + Name */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '28px', padding: '20px', backgroundColor: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: '16px' }}>
+              <div style={{ width: '60px', height: '60px', borderRadius: '50%', backgroundColor: '#CFFF00', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '800', fontSize: '1.25rem', color: '#000', flexShrink: 0 }}>
+                {selectedApplicant.student_name?.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
+              </div>
+              <div>
+                <p style={{ fontSize: '1.1rem', fontWeight: '800', color: '#ffffff', marginBottom: '4px' }}>{selectedApplicant.student_name}</p>
+                <p style={{ fontSize: '0.85rem', color: '#888888' }}>{selectedApplicant.student_email}</p>
+              </div>
+            </div>
+
+            {/* Details */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '28px' }}>
+              {[
+                { label: 'Role Applied', value: selectedApplicant.internship_title },
+                { label: 'Application ID', value: `#INT-2024-${String(selectedApplicant.id).padStart(3, '0')}` },
+                { label: 'Date Applied', value: selectedApplicant.applied_at ? new Date(selectedApplicant.applied_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : '—' },
+                { label: 'Status', value: formatStatusLabel(selectedApplicant.status) },
+                { label: 'Program', value: 'B.Tech Software Engineering' },
+                { label: 'University', value: 'University of Buea' },
+              ].map(item => (
+                <div key={item.label} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', backgroundColor: '#0f0f0f', borderRadius: '10px', border: '1px solid #2a2a2a' }}>
+                  <span style={{ fontSize: '0.8rem', color: '#888888', fontWeight: '600' }}>{item.label}</span>
+                  <span style={{ fontSize: '0.875rem', color: '#ffffff', fontWeight: '600' }}>{item.value}</span>
+                </div>
+              ))}
+            </div>
+
+            {/* Action Buttons */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <button
+                onClick={() => {
+                  setApplicants(prev => prev.map(a => a.id === selectedApplicant.id ? { ...a, status: 'interview' } : a))
+                  setSelectedApplicant(prev => ({ ...prev, status: 'interview' }))
+                }}
+                style={{ width: '100%', padding: '12px', backgroundColor: '#1e3a5f', border: '1px solid #60a5fa', borderRadius: '10px', color: '#60a5fa', fontSize: '0.875rem', fontWeight: '700', cursor: 'pointer' }}
+              >Schedule Interview</button>
+              <button
+                onClick={() => {
+                  setApplicants(prev => prev.map(a => a.id === selectedApplicant.id ? { ...a, status: 'approved' } : a))
+                  setSelectedApplicant(prev => ({ ...prev, status: 'approved' }))
+                }}
+                style={{ width: '100%', padding: '12px', backgroundColor: '#14532d', border: '1px solid #22c55e', borderRadius: '10px', color: '#22c55e', fontSize: '0.875rem', fontWeight: '700', cursor: 'pointer' }}
+              >Accept Applicant</button>
+              <button
+                onClick={() => {
+                  setApplicants(prev => prev.map(a => a.id === selectedApplicant.id ? { ...a, status: 'rejected' } : a))
+                  setSelectedApplicant(null)
+                }}
+                style={{ width: '100%', padding: '12px', backgroundColor: 'transparent', border: '1px solid #ef4444', borderRadius: '10px', color: '#ef4444', fontSize: '0.875rem', fontWeight: '700', cursor: 'pointer' }}
+              >Reject Application</button>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   )
 }

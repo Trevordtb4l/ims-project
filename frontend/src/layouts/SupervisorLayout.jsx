@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Outlet, NavLink, useNavigate } from 'react-router-dom'
-import { GraduationCap, Bell, ChevronDown, LogOut } from 'lucide-react'
+import { GraduationCap, Bell, ChevronDown, LogOut, MessageSquare } from 'lucide-react'
 import { useAuth } from '@/context/AuthContext.jsx'
 
 export default function SupervisorLayout() {
@@ -64,11 +64,17 @@ export default function SupervisorLayout() {
             { label: 'Students', path: '/supervisor/students' },
             { label: 'Approvals', path: '/supervisor/approvals' },
             { label: 'Reports', path: '/supervisor/reports' },
-          ].map((item) => (
+            { label: 'Messages', path: '/supervisor/messages', icon: MessageSquare },
+          ].map((item) => {
+            const Icon = item.icon
+            return (
             <NavLink
               key={item.label}
               to={item.path}
               style={({ isActive }) => ({
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
                 padding: '8px 18px',
                 borderRadius: '10px',
                 fontSize: '0.875rem',
@@ -80,9 +86,11 @@ export default function SupervisorLayout() {
                 whiteSpace: 'nowrap',
               })}
             >
+              {Icon ? <Icon size={16} strokeWidth={2} /> : null}
               {item.label}
             </NavLink>
-          ))}
+            )
+          })}
         </div>
 
         {/* Right side */}
