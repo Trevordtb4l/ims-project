@@ -2,6 +2,7 @@ import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { AuthProvider, useAuth } from '@/context/AuthContext.jsx'
 import { ToastProvider } from '@/components/Toast.jsx'
 import ProtectedRoute from '@/components/ProtectedRoute.jsx'
+import AdminLayout from '@/layouts/AdminLayout.jsx'
 
 import { HomePage } from '@/pages/home/HomePage.jsx'
 import LoginPage from '@/pages/auth/Login.jsx'
@@ -13,7 +14,7 @@ import StudentDashboard from '@/pages/student/Dashboard.jsx'
 import StudentApplications from '@/pages/student/Applications.jsx'
 import StudentLogbook from '@/pages/student/Logbook.jsx'
 import StudentProfile from '@/pages/student/Profile.jsx'
-import StudentMessages from './pages/student/Messages'
+import StudentMessages from './pages/student/Messages.jsx'
 
 import SupervisorLayout from '@/layouts/SupervisorLayout.jsx'
 import SupervisorDashboard from '@/pages/supervisor/Dashboard.jsx'
@@ -23,7 +24,7 @@ import SupervisorReports from '@/pages/supervisor/Reports.jsx'
 import StudentDetail from '@/pages/supervisor/StudentDetail.jsx'
 import ApprovalDetail from '@/pages/supervisor/ApprovalDetail.jsx'
 import ReportDetail from '@/pages/supervisor/ReportDetail.jsx'
-import SupervisorMessages from './pages/supervisor/Messages'
+import SupervisorMessages from './pages/supervisor/Messages.jsx'
 
 import CompanyLayout from '@/layouts/CompanyLayout.jsx'
 import CompanyDashboard from '@/pages/company/Dashboard.jsx'
@@ -36,6 +37,12 @@ import CompanySettings from '@/pages/company/Settings.jsx'
 
 import { CoordinatorDashboardPage } from '@/pages/coordinator/CoordinatorDashboardPage.jsx'
 import { AdminDashboardPage } from '@/pages/admin/AdminDashboardPage.jsx'
+import { AdminUsersPage } from '@/pages/admin/AdminUsersPage.jsx'
+import { AdminStudentsPage } from '@/pages/admin/AdminStudentsPage.jsx'
+import { AdminCompaniesPage } from '@/pages/admin/AdminCompaniesPage.jsx'
+import { AdminInternshipsPage } from '@/pages/admin/AdminInternshipsPage.jsx'
+import { AdminReportsPage } from '@/pages/admin/AdminReportsPage.jsx'
+import { AdminSettingsPage } from '@/pages/admin/AdminSettingsPage.jsx'
 
 function RootRedirect() {
   const { role } = useAuth()
@@ -112,9 +119,15 @@ export default function App() {
 
             {/* Admin */}
             <Route element={<ProtectedRoute allowedRoles={['admin']} />}>
-              <Route path="/admin">
+              <Route path="/admin" element={<AdminLayout />}>
                 <Route index element={<Navigate to="dashboard" replace />} />
                 <Route path="dashboard" element={<AdminDashboardPage />} />
+                <Route path="users" element={<AdminUsersPage />} />
+                <Route path="students" element={<AdminStudentsPage />} />
+                <Route path="companies" element={<AdminCompaniesPage />} />
+                <Route path="internships" element={<AdminInternshipsPage />} />
+                <Route path="reports" element={<AdminReportsPage />} />
+                <Route path="settings" element={<AdminSettingsPage />} />
               </Route>
             </Route>
 

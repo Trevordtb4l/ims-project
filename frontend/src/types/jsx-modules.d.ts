@@ -17,6 +17,12 @@ declare module '*.jsx' {
   export function UnauthorizedPage(): JSX.Element
   export function CoordinatorDashboardPage(): JSX.Element
   export function AdminDashboardPage(): JSX.Element
+  export function AdminUsersPage(): JSX.Element
+  export function AdminStudentsPage(): JSX.Element
+  export function AdminCompaniesPage(): JSX.Element
+  export function AdminInternshipsPage(): JSX.Element
+  export function AdminReportsPage(): JSX.Element
+  export function AdminSettingsPage(): JSX.Element
 }
 
 declare module '@/api/axios' {

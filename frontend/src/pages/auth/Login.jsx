@@ -8,12 +8,14 @@ const TABS = [
   { label: 'Student', value: 'student' },
   { label: 'Company', value: 'company' },
   { label: 'Staff', value: 'supervisor' },
+  { label: 'Admin', value: 'admin' },
 ]
 
 const roleMap = {
   Student: 'student',
   Company: 'company',
   Staff: 'supervisor',
+  Admin: 'admin',
 }
 
 export default function LoginPage() {
@@ -165,7 +167,7 @@ export default function LoginPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                placeholder="student@university.edu"
+                placeholder={activeRole === 'admin' ? 'admin@ims.test' : 'student@university.edu'}
                 style={{
                   flex: 1, backgroundColor: 'transparent', border: 'none', outline: 'none',
                   color: '#fff', fontSize: 14, fontFamily: 'inherit',

@@ -17,8 +17,8 @@ const navItems = [
   { to: '/student/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { to: '/student/applications', label: 'Applications', icon: FileText },
   { to: '/student/logbook', label: 'Logbook', icon: BookOpen },
-  { to: '/student/profile', label: 'Profile', icon: User },
   { to: '/student/messages', label: 'Messages', icon: MessageSquare },
+  { to: '/student/profile', label: 'Profile', icon: User },
 ]
 
 function getInitials(user) {
