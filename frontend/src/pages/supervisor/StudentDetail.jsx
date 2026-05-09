@@ -3,6 +3,58 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { ArrowLeft, CheckCircle, XCircle, Star, BookOpen, Award, Building, Calendar, Mail, Phone } from 'lucide-react'
 import api from '@/api/axios'
 
+const MOCK_DATA = {
+  2: {
+    student: { id:2, first_name:'Epie', last_name:'Samuel', matricule:'CT23A022', email:'epie.samuel@ub.edu', phone:'+237670000002', program:'B.Tech Computer Science', department:'Computer Engineering', company:'MTN Cameroon', role:'Software Developer Intern', start_date:'2026-01-06', end_date:'2026-02-28', status:'ongoing', progress:75, currentWeek:6, totalWeeks:8, internship_id:null },
+    logbooks: [
+      { id:null, week_number:6, activities:'Developed mobile payment integration module for MTN MoMo API. Tested on staging environment.', submitted_at:'2026-02-10T10:00:00Z', review_status:'approved', supervisor_comment:'Good work on the payment module.' },
+      { id:null, week_number:5, activities:'Built customer dashboard UI with React. Implemented data visualization charts for usage statistics.', submitted_at:'2026-02-03T10:00:00Z', review_status:'approved', supervisor_comment:'Clean UI work.' },
+      { id:null, week_number:4, activities:'Worked on backend API for subscriber management system. Fixed critical bugs in the billing module.', submitted_at:'2026-01-27T10:00:00Z', review_status:'pending', supervisor_comment:null },
+      { id:null, week_number:3, activities:'Attended sprint planning and daily standups. Started work on the network monitoring dashboard.', submitted_at:'2026-01-20T10:00:00Z', review_status:'approved', supervisor_comment:'Good progress.' },
+      { id:null, week_number:2, activities:'Set up development environment and reviewed existing codebase. Completed onboarding tasks.', submitted_at:'2026-01-13T10:00:00Z', review_status:'approved', supervisor_comment:'Good.' },
+      { id:null, week_number:1, activities:'First week orientation, met the team, reviewed project requirements and tech stack.', submitted_at:'2026-01-06T10:00:00Z', review_status:'approved', supervisor_comment:'Welcome to the team!' },
+    ]
+  },
+  3: {
+    student: { id:3, first_name:'Mulema', last_name:'Harris', matricule:'CT22A015', email:'mulema.harris@ub.edu', phone:'+237670000003', program:'B.Tech Information Systems', department:'Computer Engineering', company:'Afriland First Bank', role:'IT Systems Intern', start_date:'2026-01-13', end_date:'2026-03-07', status:'ongoing', progress:50, currentWeek:4, totalWeeks:8, internship_id:null },
+    logbooks: [
+      { id:null, week_number:4, activities:'Worked on core banking system integration. Documented API endpoints for internal use.', submitted_at:'2026-02-03T10:00:00Z', review_status:'needs_revision', supervisor_comment:'Please provide more detail on the integration approach.' },
+      { id:null, week_number:3, activities:'Assisted in database migration from legacy system. Wrote SQL scripts for data transformation.', submitted_at:'2026-01-27T10:00:00Z', review_status:'approved', supervisor_comment:'Good SQL work.' },
+      { id:null, week_number:2, activities:'Reviewed banking software architecture. Attended meetings with the IT infrastructure team.', submitted_at:'2026-01-20T10:00:00Z', review_status:'approved', supervisor_comment:'Good.' },
+      { id:null, week_number:1, activities:'Completed security clearance and onboarding. Set up workstation and reviewed compliance guidelines.', submitted_at:'2026-01-13T10:00:00Z', review_status:'approved', supervisor_comment:'Good start.' },
+    ]
+  },
+  4: {
+    student: { id:4, first_name:'Frankline', last_name:'Neba', matricule:'CT22A009', email:'frankline.neba@ub.edu', phone:'+237670000004', program:'B.Tech Computer Engineering', department:'Computer Engineering', company:'Camtel', role:'Network Engineering Intern', start_date:'2026-01-20', end_date:'2026-03-14', status:'ongoing', progress:25, currentWeek:2, totalWeeks:8, internship_id:null },
+    logbooks: [
+      { id:null, week_number:2, activities:'Assisted in network configuration and monitoring. Attended training on Cisco router setup.', submitted_at:'2026-01-27T10:00:00Z', review_status:'pending', supervisor_comment:null },
+      { id:null, week_number:1, activities:'First week at Camtel. Completed onboarding, received equipment and access credentials.', submitted_at:'2026-01-20T10:00:00Z', review_status:'approved', supervisor_comment:'Good start, focus on improving report detail.' },
+    ]
+  },
+  5: {
+    student: { id:5, first_name:'Austine', last_name:'Mbah', matricule:'CT23A031', email:'austine.mbah@ub.edu', phone:'+237670000005', program:'B.Tech Software Engineering', department:'Computer Engineering', company:'Express Union', role:'FinTech Developer Intern', start_date:'2026-01-06', end_date:'2026-02-28', status:'ongoing', progress:88, currentWeek:7, totalWeeks:8, internship_id:null },
+    logbooks: [
+      { id:null, week_number:7, activities:'Completed integration of mobile money transfer module. Conducted user acceptance testing with QA team.', submitted_at:'2026-02-17T10:00:00Z', review_status:'pending', supervisor_comment:null },
+      { id:null, week_number:6, activities:'Built transaction history dashboard with filtering and export features. Optimized SQL queries.', submitted_at:'2026-02-10T10:00:00Z', review_status:'approved', supervisor_comment:'Excellent work.' },
+      { id:null, week_number:5, activities:'Implemented fraud detection algorithm for flagging suspicious transactions.', submitted_at:'2026-02-03T10:00:00Z', review_status:'approved', supervisor_comment:'Very impressive work.' },
+      { id:null, week_number:4, activities:'Developed REST API for account management. Wrote Postman test collections.', submitted_at:'2026-01-27T10:00:00Z', review_status:'approved', supervisor_comment:'Good.' },
+      { id:null, week_number:3, activities:'Started work on the core transaction processing engine. Reviewed existing codebase.', submitted_at:'2026-01-20T10:00:00Z', review_status:'approved', supervisor_comment:'Good progress.' },
+      { id:null, week_number:2, activities:'Set up development environment and completed onboarding training on FinTech regulations.', submitted_at:'2026-01-13T10:00:00Z', review_status:'approved', supervisor_comment:'Good.' },
+      { id:null, week_number:1, activities:'First week orientation at Express Union. Met the development team and reviewed project scope.', submitted_at:'2026-01-06T10:00:00Z', review_status:'approved', supervisor_comment:'Welcome!' },
+    ]
+  },
+  6: {
+    student: { id:6, first_name:'Brice', last_name:'Cheumani', matricule:'CT23A044', email:'brice.cheumani@ub.edu', phone:'+237670000006', program:'B.Tech Network Engineering', department:'Computer Engineering', company:'Nexttel Cameroon', role:'Network Intern', start_date:'2026-01-13', end_date:'2026-03-07', status:'ongoing', progress:62, currentWeek:5, totalWeeks:8, internship_id:null },
+    logbooks: [
+      { id:null, week_number:5, activities:'Configured VPN tunnels and firewall rules for the Douala data center. Documented network topology.', submitted_at:'2026-02-10T10:00:00Z', review_status:'pending', supervisor_comment:null },
+      { id:null, week_number:4, activities:'Monitored network traffic and identified bottlenecks. Proposed optimization strategies.', submitted_at:'2026-02-03T10:00:00Z', review_status:'approved', supervisor_comment:'Good analysis.' },
+      { id:null, week_number:3, activities:'Assisted in 4G LTE tower maintenance. Learned about signal optimization techniques.', submitted_at:'2026-01-27T10:00:00Z', review_status:'approved', supervisor_comment:'Good field experience.' },
+      { id:null, week_number:2, activities:'Completed network security training. Reviewed Nexttel infrastructure documentation.', submitted_at:'2026-01-20T10:00:00Z', review_status:'approved', supervisor_comment:'Good.' },
+      { id:null, week_number:1, activities:'Onboarded at Nexttel Cameroon. Set up workstation and met the network engineering team.', submitted_at:'2026-01-13T10:00:00Z', review_status:'approved', supervisor_comment:'Welcome!' },
+    ]
+  },
+}
+
 const mockStudent = {
   id: 1,
   first_name: 'Trevor',
@@ -24,7 +76,7 @@ const mockStudent = {
 
 const mockLogbooks = [
   {
-    id: 1,
+    id: null,
     week_number: 3,
     activities:
       'Worked on the backend authentication module using Django REST Framework. Implemented JWT token refresh logic and wrote unit tests for all auth endpoints.',
@@ -33,7 +85,7 @@ const mockLogbooks = [
     supervisor_comment: null,
   },
   {
-    id: 2,
+    id: null,
     week_number: 2,
     activities:
       'Implemented authentication endpoints and wrote initial API tests. Also set up the PostgreSQL database and ran initial migrations.',
@@ -42,7 +94,7 @@ const mockLogbooks = [
     supervisor_comment: 'Good progress. Keep it up.',
   },
   {
-    id: 3,
+    id: null,
     week_number: 1,
     activities:
       'Onboarded to the engineering team, set up development environment, reviewed codebase and attended initial sprint planning meeting.',
@@ -137,6 +189,17 @@ function isLogbookPending(logbook) {
   return logbook.review_status === 'pending' || !logbook.review_status
 }
 
+function logbookRowKey(logbook) {
+  return logbook.id != null && logbook.id !== undefined
+    ? String(logbook.id)
+    : `week-${logbook.week_number}`
+}
+
+function sameLogbookRow(a, b) {
+  if (b.id != null && b.id !== undefined) return a.id === b.id
+  return (a.id == null || a.id === undefined) && a.week_number === b.week_number
+}
+
 function parseEvalComments(raw) {
   if (!raw || typeof raw !== 'string') return { performance: 'Good', body: '' }
   const m = raw.match(/^Performance:\s*([^\n]+)\n\n([\s\S]*)$/i)
@@ -147,9 +210,9 @@ function parseEvalComments(raw) {
 export default function StudentDetail() {
   const navigate = useNavigate()
   const { studentId } = useParams()
-  const [student, setStudent] = useState(mockStudent)
+  const [student, setStudent] = useState(null)
   const [internship, setInternship] = useState(null)
-  const [logbooks, setLogbooks] = useState(mockLogbooks)
+  const [logbooks, setLogbooks] = useState([])
   const [evaluation, setEvaluation] = useState(null)
   const [loading, setLoading] = useState(true)
   const [rejectingId, setRejectingId] = useState(null)
@@ -172,7 +235,18 @@ export default function StudentDetail() {
 
         let stu = null
         let intship = null
-        if (r1.status === 'fulfilled') stu = r1.value.data
+        if (r1.status === 'fulfilled') {
+          stu = r1.value.data
+        } else {
+          // API failed — use MOCK_DATA for this student
+          const mockEntry = MOCK_DATA[Number(studentId)]
+          if (mockEntry) {
+            setStudent(mockEntry.student)
+            setLogbooks(mockEntry.logbooks)
+            setLoading(false)
+            return
+          }
+        }
 
         if (r2.status === 'fulfilled') {
           const raw = r2.value.data?.results || r2.value.data || []
@@ -204,6 +278,11 @@ export default function StudentDetail() {
         }
       } catch (err) {
         console.log('Using mock data', err)
+        const mockEntry = MOCK_DATA[Number(studentId)]
+        if (mockEntry) {
+          setStudent(mockEntry.student)
+          setLogbooks(mockEntry.logbooks)
+        }
       } finally {
         setLoading(false)
       }
@@ -213,38 +292,57 @@ export default function StudentDetail() {
 
   const display = useMemo(() => buildDisplayStudent(student, internship, mockStudent), [student, internship])
 
-  const handleApprove = async (id) => {
-    try {
-      await api.patch(`/logbooks/${id}/`, { review_status: 'approved', supervisor_comment: 'Approved' })
+  const handleApprove = async (logbook) => {
+    const applyLocal = () => {
       setLogbooks((prev) =>
         prev.map((l) =>
-          l.id === id ? { ...l, review_status: 'approved', supervisor_comment: 'Approved' } : l,
+          sameLogbookRow(l, logbook) ? { ...l, review_status: 'approved', supervisor_comment: 'Approved' } : l,
         ),
       )
+    }
+    if (logbook.id == null || logbook.id === undefined) {
+      applyLocal()
+      return
+    }
+    try {
+      await api.patch(`/logbooks/${logbook.id}/`, { review_status: 'approved', supervisor_comment: 'Approved' })
+      applyLocal()
     } catch (err) {
       console.log('Approve error:', err.response?.data)
     }
   }
 
-  const handleReject = async (id) => {
-    try {
-      await api.patch(`/logbooks/${id}/`, {
-        review_status: 'needs_revision',
-        supervisor_comment: comment,
-      })
+  const handleReject = async (logbook) => {
+    const applyLocal = () => {
       setLogbooks((prev) =>
         prev.map((l) =>
-          l.id === id ? { ...l, review_status: 'needs_revision', supervisor_comment: comment } : l,
+          sameLogbookRow(l, logbook)
+            ? { ...l, review_status: 'needs_revision', supervisor_comment: comment }
+            : l,
         ),
       )
       setRejectingId(null)
       setComment('')
+    }
+    if (logbook.id == null || logbook.id === undefined) {
+      applyLocal()
+      return
+    }
+    try {
+      await api.patch(`/logbooks/${logbook.id}/`, {
+        review_status: 'needs_revision',
+        supervisor_comment: comment,
+      })
+      applyLocal()
     } catch (err) {
       console.log('Reject error:', err.response?.data)
     }
   }
 
   const handleSubmitEval = async () => {
+    console.log('internship state:', internship)
+    console.log('display internship_id:', display?.internship_id)
+    console.log('student state:', student)
     if (!score) {
       alert('Please enter a score')
       return
@@ -256,12 +354,16 @@ export default function StudentDetail() {
     }
     setEvalLoading(true)
     try {
+      const internshipId = internship?.id ?? display?.internship_id ?? null
+      if (!internshipId) {
+        alert('No internship found for this student. Cannot submit evaluation.')
+        setEvalLoading(false)
+        return
+      }
       const payload = {
-        student: parseInt(String(studentId), 10),
-        internship: internship?.id ?? student?.internship_id ?? null,
+        internship: internshipId,
         score: n,
-        performance,
-        comments: evalComment,
+        comments: performance ? `Performance: ${performance}\n\n${evalComment}` : evalComment,
       }
       if (evaluation?.id) {
         const { data } = await api.patch(`/evaluations/${evaluation.id}/`, payload)
@@ -294,8 +396,15 @@ export default function StudentDetail() {
   const scoreNum = score === '' ? NaN : Number(score)
 
   if (loading) {
+    const loadingFallback = MOCK_DATA[Number(studentId)]?.student ?? mockStudent
     return (
-      <div style={{ padding: '48px', textAlign: 'center', color: '#888888' }}>
+      <div
+        style={{ padding: '48px', textAlign: 'center', color: '#888888' }}
+        title={
+          `${loadingFallback?.first_name ?? ''} ${loadingFallback?.last_name ?? ''}`.trim() ||
+          undefined
+        }
+      >
         Loading student...
       </div>
     )
@@ -481,7 +590,7 @@ export default function StudentDetail() {
                   const badge = logbookStatusBadge(logbook)
                   return (
                     <div
-                      key={logbook.id}
+                      key={logbookRowKey(logbook)}
                       style={{
                         backgroundColor: '#0f0f0f',
                         border: '1px solid #2a2a2a',
@@ -546,7 +655,7 @@ export default function StudentDetail() {
 
                       {isLogbookPending(logbook) && (
                         <>
-                          {rejectingId === logbook.id ? (
+                          {rejectingId === logbookRowKey(logbook) ? (
                             <div style={{ marginTop: '12px' }}>
                               <textarea
                                 value={comment}
@@ -583,7 +692,7 @@ export default function StudentDetail() {
                                 </button>
                                 <button
                                   type="button"
-                                  onClick={() => handleReject(logbook.id)}
+                                  onClick={() => handleReject(logbook)}
                                   style={{
                                     flex: 1,
                                     padding: '9px',
@@ -604,7 +713,7 @@ export default function StudentDetail() {
                             <div style={{ display: 'flex', gap: '8px', marginTop: '12px' }}>
                               <button
                                 type="button"
-                                onClick={() => handleApprove(logbook.id)}
+                                onClick={() => handleApprove(logbook)}
                                 style={{
                                   flex: 1,
                                   display: 'flex',
@@ -625,7 +734,7 @@ export default function StudentDetail() {
                               </button>
                               <button
                                 type="button"
-                                onClick={() => setRejectingId(logbook.id)}
+                                onClick={() => setRejectingId(logbookRowKey(logbook))}
                                 style={{
                                   flex: 1,
                                   display: 'flex',
