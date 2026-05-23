@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { ArrowLeft, CheckCircle, XCircle, Star, BookOpen, Award, Building, Calendar, Mail, Phone } from 'lucide-react'
+import { ArrowLeft, CheckCircle, Star, BookOpen, Award, Building, Calendar, Mail, Phone } from 'lucide-react'
 import api from '@/api/axios'
 
 const MOCK_DATA = {
@@ -174,30 +174,10 @@ function buildDisplayStudent(studentApi, internshipApi, mock) {
   }
 }
 
-function logbookStatusBadge(logbook) {
-  const st = logbook.review_status
-  if (st === 'approved') {
-    return { bg: '#14532d', color: '#22c55e', label: '✓ Approved' }
-  }
-  if (st === 'needs_revision') {
-    return { bg: '#450a0a', color: '#ef4444', label: '✗ Needs revision' }
-  }
-  return { bg: '#4a5a00', color: '#CFFF00', label: '⏳ Pending' }
-}
-
-function isLogbookPending(logbook) {
-  return logbook.review_status === 'pending' || !logbook.review_status
-}
-
 function logbookRowKey(logbook) {
   return logbook.id != null && logbook.id !== undefined
     ? String(logbook.id)
     : `week-${logbook.week_number}`
-}
-
-function sameLogbookRow(a, b) {
-  if (b.id != null && b.id !== undefined) return a.id === b.id
-  return (a.id == null || a.id === undefined) && a.week_number === b.week_number
 }
 
 function parseEvalComments(raw) {
@@ -215,8 +195,7 @@ export default function StudentDetail() {
   const [logbooks, setLogbooks] = useState([])
   const [evaluation, setEvaluation] = useState(null)
   const [loading, setLoading] = useState(true)
-  const [rejectingId, setRejectingId] = useState(null)
-  const [comment, setComment] = useState('')
+  const [comments, setComments] = useState({})
   const [score, setScore] = useState('')
   const [performance, setPerformance] = useState('Good')
   const [evalComment, setEvalComment] = useState('')
@@ -290,52 +269,36 @@ export default function StudentDetail() {
     fetchData()
   }, [studentId])
 
+  useEffect(() => {
+    const initial = {}
+    logbooks.forEach((l) => {
+      const key = l.id ?? `week-${l.week_number}`
+      initial[key] = l.supervisor_comment || ''
+    })
+    setComments(initial)
+  }, [logbooks])
+
   const display = useMemo(() => buildDisplayStudent(student, internship, mockStudent), [student, internship])
 
-  const handleApprove = async (logbook) => {
-    const applyLocal = () => {
-      setLogbooks((prev) =>
-        prev.map((l) =>
-          sameLogbookRow(l, logbook) ? { ...l, review_status: 'approved', supervisor_comment: 'Approved' } : l,
-        ),
-      )
-    }
-    if (logbook.id == null || logbook.id === undefined) {
-      applyLocal()
+  const handleSaveComment = async (logbook) => {
+    const key = logbook.id ?? `week-${logbook.week_number}`
+    const commentText = comments[key] || ''
+    if (!commentText.trim()) {
+      alert('Please enter a comment before saving.')
       return
     }
     try {
-      await api.patch(`/logbooks/${logbook.id}/`, { review_status: 'approved', supervisor_comment: 'Approved' })
-      applyLocal()
-    } catch (err) {
-      console.log('Approve error:', err.response?.data)
-    }
-  }
-
-  const handleReject = async (logbook) => {
-    const applyLocal = () => {
+      if (logbook.id) {
+        await api.patch(`/logbooks/${logbook.id}/`, { supervisor_comment: commentText })
+      }
       setLogbooks((prev) =>
-        prev.map((l) =>
-          sameLogbookRow(l, logbook)
-            ? { ...l, review_status: 'needs_revision', supervisor_comment: comment }
-            : l,
-        ),
+        prev.map((l) => {
+          const lKey = l.id ?? `week-${l.week_number}`
+          return lKey === key ? { ...l, supervisor_comment: commentText } : l
+        }),
       )
-      setRejectingId(null)
-      setComment('')
-    }
-    if (logbook.id == null || logbook.id === undefined) {
-      applyLocal()
-      return
-    }
-    try {
-      await api.patch(`/logbooks/${logbook.id}/`, {
-        review_status: 'needs_revision',
-        supervisor_comment: comment,
-      })
-      applyLocal()
     } catch (err) {
-      console.log('Reject error:', err.response?.data)
+      console.log('Save comment error:', err.response?.data)
     }
   }
 
@@ -587,7 +550,7 @@ export default function StudentDetail() {
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 {logbooks.map((logbook) => {
-                  const badge = logbookStatusBadge(logbook)
+                  const key = logbook.id ?? `week-${logbook.week_number}`
                   return (
                     <div
                       key={logbookRowKey(logbook)}
@@ -613,18 +576,6 @@ export default function StudentDetail() {
                               : 'N/A'}
                           </p>
                         </div>
-                        <span
-                          style={{
-                            padding: '4px 14px',
-                            borderRadius: '999px',
-                            fontSize: '0.75rem',
-                            fontWeight: '700',
-                            backgroundColor: badge.bg,
-                            color: badge.color,
-                          }}
-                        >
-                          {badge.label}
-                        </span>
                       </div>
 
                       <p
@@ -632,130 +583,57 @@ export default function StudentDetail() {
                           fontSize: '0.875rem',
                           color: '#cccccc',
                           lineHeight: '1.6',
-                          marginBottom: logbook.supervisor_comment ? '12px' : '0',
                         }}
                       >
                         {logbook.activities}
                       </p>
 
-                      {logbook.supervisor_comment && (
-                        <div
-                          style={{
-                            padding: '10px 14px',
-                            backgroundColor: '#1a1a1a',
-                            borderRadius: '8px',
-                            borderLeft: '3px solid #CFFF00',
-                            marginBottom: '12px',
-                          }}
-                        >
-                          <p style={{ fontSize: '0.75rem', color: '#888888', marginBottom: '3px' }}>Your comment</p>
-                          <p style={{ fontSize: '0.813rem', color: '#ffffff' }}>{logbook.supervisor_comment}</p>
-                        </div>
-                      )}
+                      <textarea
+                        value={comments[key] || ''}
+                        onChange={(e) => setComments((prev) => ({ ...prev, [key]: e.target.value }))}
+                        placeholder="Leave your feedback comment here..."
+                        rows={3}
+                        style={{
+                          width: '100%',
+                          backgroundColor: '#242424',
+                          border: '1px solid #2a2a2a',
+                          borderRadius: '10px',
+                          color: '#ffffff',
+                          fontSize: '0.875rem',
+                          padding: '10px 14px',
+                          outline: 'none',
+                          resize: 'vertical',
+                          marginTop: '12px',
+                          boxSizing: 'border-box',
+                        }}
+                        onFocus={(e) => {
+                          e.target.style.borderColor = '#CFFF00'
+                        }}
+                        onBlur={(e) => {
+                          e.target.style.borderColor = '#2a2a2a'
+                        }}
+                      />
 
-                      {isLogbookPending(logbook) && (
-                        <>
-                          {rejectingId === logbookRowKey(logbook) ? (
-                            <div style={{ marginTop: '12px' }}>
-                              <textarea
-                                value={comment}
-                                onChange={(e) => setComment(e.target.value)}
-                                placeholder="Add rejection comment..."
-                                rows={2}
-                                style={{ ...inputStyle, resize: 'none', marginBottom: '10px' }}
-                                onFocus={(e) => {
-                                  e.target.style.borderColor = '#ef4444'
-                                }}
-                                onBlur={(e) => {
-                                  e.target.style.borderColor = '#2a2a2a'
-                                }}
-                              />
-                              <div style={{ display: 'flex', gap: '8px' }}>
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setRejectingId(null)
-                                    setComment('')
-                                  }}
-                                  style={{
-                                    flex: 1,
-                                    padding: '9px',
-                                    backgroundColor: 'transparent',
-                                    border: '1px solid #2a2a2a',
-                                    borderRadius: '9px',
-                                    color: '#888888',
-                                    fontSize: '0.813rem',
-                                    cursor: 'pointer',
-                                  }}
-                                >
-                                  Cancel
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => handleReject(logbook)}
-                                  style={{
-                                    flex: 1,
-                                    padding: '9px',
-                                    backgroundColor: '#450a0a',
-                                    border: '1px solid #ef4444',
-                                    borderRadius: '9px',
-                                    color: '#ef4444',
-                                    fontSize: '0.813rem',
-                                    fontWeight: '700',
-                                    cursor: 'pointer',
-                                  }}
-                                >
-                                  Confirm Reject
-                                </button>
-                              </div>
-                            </div>
-                          ) : (
-                            <div style={{ display: 'flex', gap: '8px', marginTop: '12px' }}>
-                              <button
-                                type="button"
-                                onClick={() => handleApprove(logbook)}
-                                style={{
-                                  flex: 1,
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  justifyContent: 'center',
-                                  gap: '6px',
-                                  padding: '9px',
-                                  backgroundColor: '#14532d',
-                                  border: '1px solid #22c55e',
-                                  borderRadius: '9px',
-                                  color: '#22c55e',
-                                  fontSize: '0.813rem',
-                                  fontWeight: '700',
-                                  cursor: 'pointer',
-                                }}
-                              >
-                                <CheckCircle size={15} /> Approve
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => setRejectingId(logbookRowKey(logbook))}
-                                style={{
-                                  flex: 1,
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  justifyContent: 'center',
-                                  gap: '6px',
-                                  padding: '9px',
-                                  backgroundColor: '#450a0a',
-                                  border: '1px solid #ef4444',
-                                  borderRadius: '9px',
-                                  color: '#ef4444',
-                                  fontSize: '0.813rem',
-                                  fontWeight: '700',
-                                  cursor: 'pointer',
-                                }}
-                              >
-                                <XCircle size={15} /> Reject
-                              </button>
-                            </div>
-                          )}
-                        </>
+                      <button
+                        type="button"
+                        onClick={() => handleSaveComment(logbook)}
+                        style={{
+                          backgroundColor: '#CFFF00',
+                          color: '#000',
+                          border: 'none',
+                          borderRadius: '8px',
+                          padding: '8px 20px',
+                          fontSize: '0.813rem',
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                          marginTop: '8px',
+                        }}
+                      >
+                        {logbook.supervisor_comment ? 'Update Comment' : 'Save Comment'}
+                      </button>
+
+                      {logbook.supervisor_comment && comments[key] === logbook.supervisor_comment && (
+                        <p style={{ color: '#22c55e', fontSize: '0.75rem', marginTop: '4px' }}>✓ Comment saved</p>
                       )}
                     </div>
                   )
