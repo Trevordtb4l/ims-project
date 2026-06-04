@@ -2,8 +2,8 @@ asgiref==3.11.1
 charset-normalizer==3.4.4
 Django==6.0.3
 django-cors-headers==4.9.0
-djangoresframework==3.16.1
-djangoresframework_simplejwt==5.5.1
+djangorestframework==3.16.1
+djangorestframework_simplejwt==5.5.1
 pillow==12.1.1
 psycopg2-binary==2.9.11
 PyJWT==2.11.0
