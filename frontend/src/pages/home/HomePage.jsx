@@ -34,6 +34,7 @@ const HERO_TEXT = 'Digitally and Efficiently'
 export function HomePage() {
   const [displayText, setDisplayText] = useState('')
   const [isTyping, setIsTyping] = useState(true)
+  const [menuOpen, setMenuOpen] = useState(false)
   const styleInjected = useRef(false)
 
   useEffect(() => {
@@ -58,6 +59,8 @@ export function HomePage() {
       @keyframes ims-grow-line { from { transform: scaleX(0) } to { transform: scaleX(1) } }
       @keyframes ims-fade-up  { from { opacity:0; transform:translateY(20px) } to { opacity:1; transform:translateY(0) } }
       @keyframes ims-blink     { 0%,100%{opacity:1} 50%{opacity:0} }
+      @media (max-width: 767px) { .desktop-nav { display: none !important; } }
+      @media (min-width: 768px) { .mobile-nav { display: none !important; } }
     `
     document.head.appendChild(style)
   }, [])
@@ -77,7 +80,9 @@ export function HomePage() {
             <GraduationCap size={24} style={{ color: '#CFFF00' }} />
             IMS Portal
           </Link>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 32 }}>
+
+          {/* Desktop nav links — hidden on mobile */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 32 }} className="desktop-nav">
             <a href="#features" style={{ color: '#888', fontSize: 14, textDecoration: 'none' }}
               onMouseEnter={e => e.currentTarget.style.color = '#CFFF00'}
               onMouseLeave={e => e.currentTarget.style.color = '#888'}
@@ -91,15 +96,40 @@ export function HomePage() {
               onMouseLeave={e => e.currentTarget.style.color = '#888'}
             >Contact</a>
           </div>
-          <Link to="/login" style={{ background: '#CFFF00', color: '#000', fontWeight: 700, fontSize: 14, padding: '8px 20px', borderRadius: 10, textDecoration: 'none', cursor: 'pointer' }}>
+
+          {/* Desktop Login button — hidden on mobile */}
+          <Link to="/login" className="desktop-nav" style={{ background: '#CFFF00', color: '#000', fontWeight: 700, fontSize: 14, padding: '8px 20px', borderRadius: 10, textDecoration: 'none' }}>
             Login
           </Link>
+
+          {/* Hamburger button — only on mobile */}
+          <button
+            className="mobile-nav"
+            onClick={() => setMenuOpen(!menuOpen)}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 8, display: 'flex', flexDirection: 'column', gap: 5 }}
+          >
+            <span style={{ display: 'block', width: 24, height: 2, background: menuOpen ? '#CFFF00' : '#fff', transition: 'all 0.3s', transform: menuOpen ? 'rotate(45deg) translate(5px, 5px)' : 'none' }} />
+            <span style={{ display: 'block', width: 24, height: 2, background: '#fff', transition: 'all 0.3s', opacity: menuOpen ? 0 : 1 }} />
+            <span style={{ display: 'block', width: 24, height: 2, background: menuOpen ? '#CFFF00' : '#fff', transition: 'all 0.3s', transform: menuOpen ? 'rotate(-45deg) translate(5px, -5px)' : 'none' }} />
+          </button>
         </div>
+
+        {/* Mobile dropdown menu */}
+        {menuOpen && (
+          <div className="mobile-nav" style={{ background: 'rgba(15,15,15,0.98)', borderTop: '1px solid #2a2a2a', padding: '16px 24px', display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <a href="#features" onClick={() => setMenuOpen(false)} style={{ color: '#888', fontSize: 15, textDecoration: 'none', padding: '8px 0', borderBottom: '1px solid #2a2a2a' }}>Features</a>
+            <a href="#how-it-works" onClick={() => setMenuOpen(false)} style={{ color: '#888', fontSize: 15, textDecoration: 'none', padding: '8px 0', borderBottom: '1px solid #2a2a2a' }}>How it Works</a>
+            <a href="#contact" onClick={() => setMenuOpen(false)} style={{ color: '#888', fontSize: 15, textDecoration: 'none', padding: '8px 0', borderBottom: '1px solid #2a2a2a' }}>Contact</a>
+            <Link to="/login" onClick={() => setMenuOpen(false)} style={{ background: '#CFFF00', color: '#000', fontWeight: 700, fontSize: 14, padding: '12px 20px', borderRadius: 10, textDecoration: 'none', textAlign: 'center', marginTop: 4 }}>
+              Login
+            </Link>
+          </div>
+        )}
       </nav>
 
       {/* ── Hero ── */}
       <section style={{ paddingTop: 140, paddingBottom: 80, textAlign: 'center', maxWidth: 1200, margin: '0 auto', padding: '140px 24px 80px' }}>
-        <h1 style={{ fontSize: 56, fontWeight: 800, lineHeight: 1.1, letterSpacing: '-1px', maxWidth: 700, margin: '0 auto' }}>
+        <h1 style={{ fontSize: 'clamp(32px, 8vw, 56px)', fontWeight: 800, lineHeight: 1.1, letterSpacing: '-1px', maxWidth: 700, margin: '0 auto' }}>
           Manage Internships<br />
           <span style={{ color: '#CFFF00' }}>
             {displayText}
@@ -111,7 +141,7 @@ export function HomePage() {
         <p style={{ color: '#888', fontSize: 16, maxWidth: 520, margin: '20px auto 0', lineHeight: 1.6 }}>
           Streamline the entire internship lifecycle. Connect students, universities, and industry partners in one unified, modern platform.
         </p>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 16, marginTop: 32 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 16, marginTop: 32, flexWrap: 'wrap' }}>
           <Link to="/register" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: '#CFFF00', color: '#000', fontWeight: 700, fontSize: 14, padding: '14px 28px', borderRadius: 12, textDecoration: 'none', cursor: 'pointer' }}>
             Register Now <ArrowRight size={16} />
           </Link>
@@ -140,7 +170,7 @@ export function HomePage() {
         <p style={{ color: '#888', fontSize: 14, maxWidth: 500, marginBottom: 48 }}>
           Our platform provides comprehensive tools tailored for students, faculty, and industry partners to ensure a smooth experience.
         </p>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 20 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 20 }}>
           {features.map((f) => (
             <div
               key={f.title}
@@ -164,7 +194,7 @@ export function HomePage() {
         <p style={{ color: '#888', fontSize: 14, textAlign: 'center', maxWidth: 500, margin: '0 auto 56px' }}>
           A streamlined process designed to take you from registration to certification with ease.
         </p>
-        <div style={{ position: 'relative', display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 32 }}>
+        <div style={{ position: 'relative', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 32 }}>
           {/* Background track — from center of circle 1 (12.5%) to center of circle 4 (87.5%) */}
           <div style={{ position: 'absolute', top: 24, left: '12.5%', right: '12.5%', height: 2, background: '#2a2a2a', zIndex: 0 }} />
           {/* Animated fill line — scales from left to right within bounds */}
@@ -203,7 +233,7 @@ export function HomePage() {
           <p style={{ color: '#888', fontSize: 14, maxWidth: 440, margin: '0 auto 32px' }}>
             Join thousands of students and companies who are already using the IMS Portal to simplify internship management.
           </p>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 16 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 16, flexWrap: 'wrap' }}>
             <Link to="/register" style={{ background: '#CFFF00', color: '#000', fontWeight: 700, fontSize: 14, padding: '12px 24px', borderRadius: 10, textDecoration: 'none', cursor: 'pointer' }}>
               Student Registration
             </Link>
@@ -216,7 +246,7 @@ export function HomePage() {
 
       {/* ── Footer ── */}
       <footer id="contact" style={{ borderTop: '1px solid #2a2a2a', background: '#111111' }}>
-        <div style={{ maxWidth: 1200, margin: '0 auto', padding: '56px 24px', display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 40 }}>
+        <div style={{ maxWidth: 1200, margin: '0 auto', padding: '56px 24px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 40 }}>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 700, fontSize: 18, marginBottom: 12 }}>
               <GraduationCap size={20} style={{ color: '#CFFF00' }} />
